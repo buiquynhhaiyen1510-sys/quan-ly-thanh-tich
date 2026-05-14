@@ -55,6 +55,7 @@ export default function LoginPage() {
               name="email"
               type="email"
               required
+              data-testid="input-email"
               className="w-full px-3 py-2 border border-input rounded-md bg-background"
               placeholder="email@truong.edu.vn"
             />
@@ -68,16 +69,18 @@ export default function LoginPage() {
               name="password"
               type="password"
               required
+              data-testid="input-password"
               className="w-full px-3 py-2 border border-input rounded-md bg-background"
               placeholder="••••••••"
             />
           </div>
           {error && (
-            <p className="text-sm text-red-500">{error}</p>
+            <p data-testid="error-message" className="text-sm text-red-500">{error}</p>
           )}
           <button
             type="submit"
             disabled={loading}
+            data-testid="btn-login"
             className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}

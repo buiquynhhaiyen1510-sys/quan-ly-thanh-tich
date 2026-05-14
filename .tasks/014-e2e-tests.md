@@ -1,7 +1,7 @@
 ---
 id: "014"
 title: "E2E tests: luồng GV nhập thành tích + SKKN tiêu"
-status: "todo"
+status: "done"
 area: "qa"
 agent: "@qa-engineer"
 priority: "normal"

@@ -1,7 +1,7 @@
 ---
 id: "015"
 title: "User Guide cho GV và Admin"
-status: "todo"
+status: "done"
 area: "docs"
 agent: "@documentation-writer"
 priority: "low"

@@ -171,6 +171,20 @@ export default function EligibilityPage() {
           >
             {loading ? 'Đang kiểm tra...' : 'Chạy kiểm tra'}
           </button>
+
+          {result && (
+            <a
+              href={`/api/admin/export/eligibility?ruleId=${encodeURIComponent(selectedRuleId)}&year=${encodeURIComponent(selectedYear)}`}
+              download
+              data-testid="btn-export-excel"
+              className="bg-green-600 text-white px-5 py-2 rounded hover:bg-green-700 text-sm font-medium transition-colors inline-flex items-center gap-1.5"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Xuất Excel
+            </a>
+          )}
         </div>
       </div>
 
@@ -187,21 +201,21 @@ export default function EligibilityPage() {
           </p>
 
           {/* Eligible */}
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden" data-testid="eligible-section">
             <div className="px-5 py-3 bg-green-50 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-green-800">
                 Đủ điều kiện
               </h3>
-              <span className="text-xs font-medium bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+              <span data-testid="eligible-count" className="text-xs font-medium bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
                 {result.eligible.length} giáo viên
               </span>
             </div>
             {result.eligible.length === 0 ? (
               <p className="px-5 py-4 text-sm text-gray-500">Không có giáo viên nào đủ điều kiện</p>
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-gray-100" data-testid="eligible-list">
                 {result.eligible.map((t, i) => (
-                  <li key={t.teacherId} className="px-5 py-3 flex items-center justify-between">
+                  <li key={t.teacherId} data-testid={`eligible-row-${t.teacherId}`} className="px-5 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span className="text-xs text-gray-400 w-5 text-right">{i + 1}</span>
                       <span className="text-sm font-medium text-gray-900">{t.teacherName}</span>
@@ -224,19 +238,19 @@ export default function EligibilityPage() {
           </div>
 
           {/* Ineligible */}
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden" data-testid="ineligible-section">
             <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-700">
                 Chưa đủ điều kiện
               </h3>
-              <span className="text-xs font-medium bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">
+              <span data-testid="ineligible-count" className="text-xs font-medium bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">
                 {result.ineligible.length} giáo viên
               </span>
             </div>
             {result.ineligible.length === 0 ? (
               <p className="px-5 py-4 text-sm text-gray-500">Tất cả giáo viên đều đủ điều kiện</p>
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-gray-100" data-testid="ineligible-list">
                 {result.ineligible.map((t, i) => {
                   const isExpanded = expandedIneligible.has(t.teacherId)
                   const failing = t.conditions.filter(c => !c.met)

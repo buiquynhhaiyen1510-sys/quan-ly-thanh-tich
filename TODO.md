@@ -19,9 +19,7 @@ _(trống)_
 
 ## Backlog
 
-- [ ] #013 — Xuất báo cáo Excel (thành tích + kết quả lọc) [area: backend] → [.tasks/013-excel-export.md](.tasks/013-excel-export.md)
-- [ ] #014 — E2E tests: luồng GV nhập thành tích + SKKN tiêu [area: qa] → [.tasks/014-e2e-tests.md](.tasks/014-e2e-tests.md)
-- [ ] #015 — User Guide cho GV và Admin [area: docs] → [.tasks/015-user-guide.md](.tasks/015-user-guide.md)
+_(trống)_
 
 ---
 
@@ -40,6 +38,9 @@ _(trống)_
 - [x] #010 — Admin Teacher detail: section lịch sử thành tích + API /admin/teachers/[id]/achievements → [.tasks/010-admin-teacher-mgmt-ui.md](.tasks/010-admin-teacher-mgmt-ui.md)
 - [x] #011 — Admin Eligibility Filter UI: /admin/eligibility chạy engine + hiển thị đủ/chưa đủ → [.tasks/011-admin-filter-ui.md](.tasks/011-admin-filter-ui.md)
 - [x] #012 — Admin Dashboard thống kê + /admin/rules CRUD + /api/admin/stats → [.tasks/012-admin-dashboard-ui.md](.tasks/012-admin-dashboard-ui.md)
+- [x] #013 — Xuất báo cáo Excel: /api/admin/export/achievements + /api/admin/export/eligibility → [.tasks/013-excel-export.md](.tasks/013-excel-export.md)
+- [x] #014 — E2E tests (Playwright): auth + skkn-consume + admin-filter, POM pattern → [.tasks/014-e2e-tests.md](.tasks/014-e2e-tests.md)
+- [x] #015 — User Guide cho GV và Admin: docs/user/USER_GUIDE.md → [.tasks/015-user-guide.md](.tasks/015-user-guide.md)
 
 ---
 
