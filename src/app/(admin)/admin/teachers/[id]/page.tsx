@@ -5,6 +5,52 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import * as Dialog from '@radix-ui/react-dialog'
 
+interface CompetitionTitle {
+  id: string
+  type: string
+  level: string | null
+  achievementMethod: string | null
+}
+
+interface YearlyRecord {
+  id: string
+  academicYear: string
+  taskResult: string
+  partyRating: string | null
+  competitionTitles: CompetitionTitle[]
+}
+
+interface SKKN {
+  id: string
+  title: string
+  level: string
+  rating: string
+  academicYear: string
+  status: string
+  usedFor: string | null
+  usedYear: string | null
+}
+
+interface Award {
+  id: string
+  type: string
+  issuingLevel: string
+  content: string
+  year: string
+}
+
+const TITLE_LABELS: Record<string, string> = {
+  CHIEN_SI_THI_DUA: 'Chiến sĩ thi đua',
+  GV_GIOI: 'Giáo viên giỏi',
+  GV_CN_GIOI: 'GV chủ nhiệm giỏi',
+}
+const LEVEL_LABELS: Record<string, string> = {
+  SCHOOL: 'Cấp trường',
+  DISTRICT: 'Cấp huyện',
+  CITY: 'Cấp tỉnh/TP',
+}
+const TASK_LABELS: Record<string, string> = { GOOD: 'HTTốt', EXCELLENT: 'HTXS' }
+
 interface Department {
   id: string
   name: string
@@ -53,6 +99,13 @@ export default function TeacherDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [achievements, setAchievements] = useState<{
+    yearlyRecords: YearlyRecord[]
+    skkns: SKKN[]
+    awards: Award[]
+  } | null>(null)
+  const [achievementsLoading, setAchievementsLoading] = useState(false)
+
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState<EditForm>({
     fullName: '',
@@ -99,8 +152,23 @@ export default function TeacherDetailPage() {
     }
   }
 
+  async function fetchAchievements() {
+    setAchievementsLoading(true)
+    try {
+      const res = await fetch(`/api/admin/teachers/${id}/achievements`)
+      if (res.ok) setAchievements(await res.json())
+    } catch {
+      // non-critical
+    } finally {
+      setAchievementsLoading(false)
+    }
+  }
+
   useEffect(() => {
-    if (id) fetchTeacher()
+    if (id) {
+      fetchTeacher()
+      fetchAchievements()
+    }
     fetch('/api/admin/departments')
       .then(r => r.json())
       .then(setDepartments)
@@ -577,6 +645,105 @@ export default function TeacherDetailPage() {
             {resetLoading ? 'Đang xử lý...' : 'Reset mật khẩu'}
           </button>
         </form>
+      </div>
+
+      {/* Achievements section */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-5">
+        <h3 className="text-base font-semibold text-gray-900">Lịch sử thành tích</h3>
+
+        {achievementsLoading ? (
+          <p className="text-sm text-gray-500">Đang tải...</p>
+        ) : !achievements ? null : (
+          <>
+            {/* SKKN */}
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                SKKN ({achievements.skkns.length})
+              </h4>
+              {achievements.skkns.length === 0 ? (
+                <p className="text-sm text-gray-400">Chưa có SKKN nào</p>
+              ) : (
+                <div className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+                  {achievements.skkns.map(s => (
+                    <div key={s.id} className="flex items-start justify-between px-4 py-3 gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{s.title}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {LEVEL_LABELS[s.level] ?? s.level} · {s.rating} · Năm {s.academicYear}
+                          {s.status === 'USED' && (
+                            <span className="ml-2 text-amber-600">
+                              → Đã dùng cho: {s.usedFor} ({s.usedYear})
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <span className={`text-xs px-2 py-0.5 rounded font-medium flex-shrink-0 ${
+                        s.status === 'UNUSED'
+                          ? 'bg-green-50 text-green-700'
+                          : 'bg-amber-50 text-amber-700'
+                      }`}>
+                        {s.status === 'UNUSED' ? 'Chưa dùng' : 'Đã dùng'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Yearly records */}
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                Kết quả theo năm ({achievements.yearlyRecords.length} năm)
+              </h4>
+              {achievements.yearlyRecords.length === 0 ? (
+                <p className="text-sm text-gray-400">Chưa có dữ liệu năm học nào</p>
+              ) : (
+                <div className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+                  {achievements.yearlyRecords.map(r => (
+                    <div key={r.id} className="px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-900">{r.academicYear}</span>
+                        <span className="text-xs text-gray-500">{TASK_LABELS[r.taskResult] ?? r.taskResult}</span>
+                      </div>
+                      {r.competitionTitles.length > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {r.competitionTitles.map((t, i) => (
+                            <span key={t.id}>
+                              {i > 0 && ' · '}
+                              {TITLE_LABELS[t.type] ?? t.type}
+                              {t.level ? ` (${LEVEL_LABELS[t.level] ?? t.level})` : ''}
+                            </span>
+                          ))}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Awards */}
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                Khen thưởng ({achievements.awards.length})
+              </h4>
+              {achievements.awards.length === 0 ? (
+                <p className="text-sm text-gray-400">Chưa có khen thưởng nào</p>
+              ) : (
+                <div className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+                  {achievements.awards.map(a => (
+                    <div key={a.id} className="px-4 py-3">
+                      <p className="text-sm font-medium text-gray-900">{a.content}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {a.type === 'CERTIFICATE' ? 'Giấy khen' : 'Bằng khen'} · {a.issuingLevel} · Năm {a.year}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

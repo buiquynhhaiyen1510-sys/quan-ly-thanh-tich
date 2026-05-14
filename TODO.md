@@ -12,17 +12,13 @@ _(trống)_
 ---
 
 ## Up Next (prioritized)
-- [ ] #009 — UI GV: trang hồ sơ + form nhập thành tích [area: frontend] → [.tasks/009-teacher-ui.md](.tasks/009-teacher-ui.md)
-- [ ] #010 — UI Admin: quản lý GV + xem/sửa thành tích [area: frontend] → [.tasks/010-admin-teacher-mgmt-ui.md](.tasks/010-admin-teacher-mgmt-ui.md)
+
+_(trống)_
 
 ---
 
 ## Backlog
 
-- [ ] #011 — UI Admin: trang lọc GV tiềm năng [area: frontend] → [.tasks/011-admin-filter-ui.md](.tasks/011-admin-filter-ui.md)
-- [ ] #012 — UI Admin: dashboard thống kê + cấu hình quy tắc [area: frontend] → [.tasks/012-admin-dashboard-ui.md](.tasks/012-admin-dashboard-ui.md)
-- [ ] #011 — UI Admin: trang lọc GV tiềm năng [area: frontend] → [.tasks/011-admin-filter-ui.md](.tasks/011-admin-filter-ui.md)
-- [ ] #012 — UI Admin: dashboard thống kê + cấu hình quy tắc [area: frontend] → [.tasks/012-admin-dashboard-ui.md](.tasks/012-admin-dashboard-ui.md)
 - [ ] #013 — Xuất báo cáo Excel (thành tích + kết quả lọc) [area: backend] → [.tasks/013-excel-export.md](.tasks/013-excel-export.md)
 - [ ] #014 — E2E tests: luồng GV nhập thành tích + SKKN tiêu [area: qa] → [.tasks/014-e2e-tests.md](.tasks/014-e2e-tests.md)
 - [ ] #015 — User Guide cho GV và Admin [area: docs] → [.tasks/015-user-guide.md](.tasks/015-user-guide.md)
@@ -40,6 +36,10 @@ _(trống)_
 - [x] #006 — API nhập thành tích: tích hợp SKKN consume vào competition-titles + awards + skkn/available → [.tasks/006-achievement-api.md](.tasks/006-achievement-api.md)
 - [x] #007 — API CRUD EligibilityRule (Admin): GET/POST/PUT/PATCH/DELETE + Zod validation → [.tasks/007-rules-config-api.md](.tasks/007-rules-config-api.md)
 - [x] #008 — Engine lọc GV tiềm năng: checkTeacherEligibility + runEligibilityCheck + GET /api/admin/eligibility (25 unit tests) → [.tasks/008-eligibility-engine.md](.tasks/008-eligibility-engine.md)
+- [x] #009 — SKKN-consume modal trong Teacher UI khi chọn CSTĐ Cách 2 → [.tasks/009-teacher-ui.md](.tasks/009-teacher-ui.md)
+- [x] #010 — Admin Teacher detail: section lịch sử thành tích + API /admin/teachers/[id]/achievements → [.tasks/010-admin-teacher-mgmt-ui.md](.tasks/010-admin-teacher-mgmt-ui.md)
+- [x] #011 — Admin Eligibility Filter UI: /admin/eligibility chạy engine + hiển thị đủ/chưa đủ → [.tasks/011-admin-filter-ui.md](.tasks/011-admin-filter-ui.md)
+- [x] #012 — Admin Dashboard thống kê + /admin/rules CRUD + /api/admin/stats → [.tasks/012-admin-dashboard-ui.md](.tasks/012-admin-dashboard-ui.md)
 
 ---
 

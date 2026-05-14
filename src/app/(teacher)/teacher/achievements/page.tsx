@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 
 // --- Types ---
 interface CompetitionTitle {
@@ -35,6 +35,20 @@ interface Award {
   issuingLevel: string
   content: string
   year: string
+}
+
+interface Rule {
+  id: string
+  targetTitle: string
+  isActive: boolean
+}
+
+interface AvailableSKKN {
+  id: string
+  title: string
+  level: string
+  rating: string
+  academicYear: string
 }
 
 // --- Helpers ---
@@ -162,9 +176,98 @@ export default function AchievementsPage() {
   const [titleMethod, setTitleMethod] = useState<'METHOD_1' | 'METHOD_2' | ''>('')
   const [addingTitle, setAddingTitle] = useState(false)
 
+  // --- SKKN-consume modal (for METHOD_2) ---
+  const [skknModalOpen, setSkknModalOpen] = useState(false)
+  const [modalRules, setModalRules] = useState<Rule[]>([])
+  const [modalRuleId, setModalRuleId] = useState('')
+  const [modalSKKNs, setModalSKKNs] = useState<AvailableSKKN[]>([])
+  const [modalSelectedIds, setModalSelectedIds] = useState<Set<string>>(new Set())
+  const [modalLoading, setModalLoading] = useState(false)
+  const [modalSKKNsLoading, setModalSKKNsLoading] = useState(false)
+  const [modalError, setModalError] = useState<string | null>(null)
+  const prevRuleIdRef = useRef('')
+
+  async function openSKKNModal() {
+    setSkknModalOpen(true)
+    setModalSelectedIds(new Set())
+    setModalSKKNs([])
+    setModalError(null)
+    setModalLoading(true)
+    try {
+      const res = await fetch('/api/admin/rules')
+      if (res.ok) {
+        const data: Rule[] = await res.json()
+        const active = data.filter(r => r.isActive)
+        setModalRules(active)
+        if (active.length > 0) setModalRuleId(active[0].id)
+      }
+    } catch {
+      setModalError('Không thể tải danh sách quy tắc')
+    } finally {
+      setModalLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!skknModalOpen || !modalRuleId || modalRuleId === prevRuleIdRef.current) return
+    prevRuleIdRef.current = modalRuleId
+    setModalSKKNsLoading(true)
+    setModalSelectedIds(new Set())
+    fetch(`/api/teacher/skkn/available?ruleId=${encodeURIComponent(modalRuleId)}&referenceYear=${encodeURIComponent(selectedYear)}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(setModalSKKNs)
+      .catch(() => setModalSKKNs([]))
+      .finally(() => setModalSKKNsLoading(false))
+  }, [skknModalOpen, modalRuleId, selectedYear])
+
+  function toggleModalSKKN(id: string) {
+    setModalSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function handleConfirmSKKNConsume() {
+    if (!yearRecord) return
+    setModalLoading(true)
+    setModalError(null)
+    try {
+      const res = await fetch('/api/teacher/competition-titles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          yearlyRecordId: yearRecord.id,
+          type: titleType,
+          level: titleLevel,
+          achievementMethod: 'METHOD_2',
+          ruleId: modalRuleId,
+          skknIds: Array.from(modalSelectedIds),
+        }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d?.error ?? 'Thêm danh hiệu thất bại')
+      }
+      setSkknModalOpen(false)
+      await fetchAll()
+      showNotification('success', 'Đã thêm danh hiệu và tiêu SKKN thành công')
+    } catch (err) {
+      setModalError(err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    } finally {
+      setModalLoading(false)
+    }
+  }
+
   async function handleAddTitle() {
     if (!yearRecord) {
       showNotification('error', 'Cần lưu kết quả năm học trước')
+      return
+    }
+    if (titleType === 'CHIEN_SI_THI_DUA' && titleMethod === 'METHOD_2') {
+      prevRuleIdRef.current = ''
+      await openSKKNModal()
       return
     }
     setAddingTitle(true)
@@ -573,6 +676,108 @@ export default function AchievementsPage() {
           </div>
         </form>
       </section>
+
+      {/* ── SKKN MODAL ── */}
+      {skknModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" data-testid="skkn-modal">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900">
+                Chọn SKKN để tiêu — Cách 2
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                SKKN được chọn sẽ bị đánh dấu đã dùng sau khi xác nhận
+              </p>
+            </div>
+
+            <div className="px-6 py-4 space-y-4">
+              {modalLoading && !modalSKKNsLoading ? (
+                <p className="text-sm text-gray-500">Đang tải...</p>
+              ) : modalRules.length === 0 ? (
+                <p className="text-sm text-amber-700">
+                  Chưa có quy tắc nào được cấu hình. Liên hệ Admin.
+                </p>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Quy tắc danh hiệu áp dụng
+                    </label>
+                    <select
+                      value={modalRuleId}
+                      onChange={e => { prevRuleIdRef.current = ''; setModalRuleId(e.target.value) }}
+                      data-testid="modal-select-rule"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                      {modalRules.map(r => (
+                        <option key={r.id} value={r.id}>{r.targetTitle}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      SKKN đủ điều kiện
+                    </label>
+                    {modalSKKNsLoading ? (
+                      <p className="text-sm text-gray-400">Đang tải SKKN...</p>
+                    ) : modalSKKNs.length === 0 ? (
+                      <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                        Không có SKKN nào đủ điều kiện cho quy tắc này trong năm học {selectedYear}
+                      </p>
+                    ) : (
+                      <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                        {modalSKKNs.map(s => (
+                          <li key={s.id}>
+                            <label className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50">
+                              <input
+                                type="checkbox"
+                                checked={modalSelectedIds.has(s.id)}
+                                onChange={() => toggleModalSKKN(s.id)}
+                                className="mt-0.5 w-4 h-4 text-blue-600"
+                                data-testid={`modal-skkn-${s.id}`}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">{s.title}</p>
+                                <p className="text-xs text-gray-500">
+                                  {s.academicYear} · {s.level === 'SCHOOL' ? 'Cấp trường' : s.level === 'DISTRICT' ? 'Cấp huyện' : 'Cấp tỉnh'} · {s.rating}
+                                </p>
+                              </div>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {modalError && (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+                  {modalError}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
+              <button
+                onClick={() => setSkknModalOpen(false)}
+                className="border px-4 py-2 rounded text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleConfirmSKKNConsume}
+                disabled={modalLoading || modalSelectedIds.size === 0 || modalRules.length === 0}
+                data-testid="btn-confirm-consume"
+                className="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium transition-colors"
+              >
+                {modalLoading ? 'Đang xử lý...' : `Xác nhận (${modalSelectedIds.size} SKKN)`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── 4. KHEN THƯỞNG ── */}
       <section className="bg-white rounded-lg border border-gray-200 p-5">
