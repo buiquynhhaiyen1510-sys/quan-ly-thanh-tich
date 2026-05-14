@@ -12,8 +12,6 @@ _(trống)_
 ---
 
 ## Up Next (prioritized)
-
-- [ ] #008 — Engine lọc GV tiềm năng theo danh hiệu [area: backend] → [.tasks/008-eligibility-engine.md](.tasks/008-eligibility-engine.md)
 - [ ] #009 — UI GV: trang hồ sơ + form nhập thành tích [area: frontend] → [.tasks/009-teacher-ui.md](.tasks/009-teacher-ui.md)
 - [ ] #010 — UI Admin: quản lý GV + xem/sửa thành tích [area: frontend] → [.tasks/010-admin-teacher-mgmt-ui.md](.tasks/010-admin-teacher-mgmt-ui.md)
 
@@ -41,6 +39,7 @@ _(trống)_
 - [x] #005 — Logic SKKN tiêu: rule-driven consume engine (23 unit tests, 100% coverage) → [.tasks/005-skkn-consume-logic.md](.tasks/005-skkn-consume-logic.md)
 - [x] #006 — API nhập thành tích: tích hợp SKKN consume vào competition-titles + awards + skkn/available → [.tasks/006-achievement-api.md](.tasks/006-achievement-api.md)
 - [x] #007 — API CRUD EligibilityRule (Admin): GET/POST/PUT/PATCH/DELETE + Zod validation → [.tasks/007-rules-config-api.md](.tasks/007-rules-config-api.md)
+- [x] #008 — Engine lọc GV tiềm năng: checkTeacherEligibility + runEligibilityCheck + GET /api/admin/eligibility (25 unit tests) → [.tasks/008-eligibility-engine.md](.tasks/008-eligibility-engine.md)
 
 ---
 
