@@ -16,7 +16,7 @@ export async function GET(
     include: { teacherProfile: true },
   })
   if (!user?.teacherProfile) {
-    return NextResponse.json({ error: 'Teacher not found' }, { status: 404 })
+    return NextResponse.json({ yearlyRecords: [], skkns: [], awards: [] })
   }
 
   const teacherId = user.teacherProfile.id

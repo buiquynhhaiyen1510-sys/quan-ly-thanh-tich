@@ -69,28 +69,22 @@ export async function PUT(
   const { fullName, dateOfBirth, department, teachingSince, isPartyMember, partyJoinDate } =
     parsed.data
 
-  const profileData: {
-    fullName?: string
-    dateOfBirth?: Date | null
-    department?: string
-    teachingSince?: number
-    isPartyMember?: boolean
-    partyJoinDate?: Date | null
-  } = {}
+  const profileData = {
+    fullName: fullName ?? '',
+    dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+    department: department ?? '',
+    teachingSince: teachingSince ?? new Date().getFullYear(),
+    isPartyMember: isPartyMember ?? false,
+    partyJoinDate: partyJoinDate ? new Date(partyJoinDate) : null,
+  }
 
-  if (fullName !== undefined) profileData.fullName = fullName
-  if (dateOfBirth !== undefined) profileData.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null
-  if (department !== undefined) profileData.department = department
-  if (teachingSince !== undefined) profileData.teachingSince = teachingSince
-  if (isPartyMember !== undefined) profileData.isPartyMember = isPartyMember
-  if (partyJoinDate !== undefined) profileData.partyJoinDate = partyJoinDate ? new Date(partyJoinDate) : null
-
+  // Dùng upsert để xử lý cả trường hợp chưa có teacherProfile (VD: tài khoản BGH/Admin)
   const updated = await db.user.update({
     where: { id: params.id },
     data: {
-      teacherProfile: {
-        update: profileData,
-      },
+      teacherProfile: user.teacherProfile
+        ? { update: profileData }
+        : { create: profileData },
     },
     include: { teacherProfile: true },
   })
