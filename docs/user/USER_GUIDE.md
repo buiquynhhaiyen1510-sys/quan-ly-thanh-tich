@@ -58,7 +58,7 @@ Sau khi đăng nhập:
 
 1. Chọn năm học.
 2. Điền **Tên SKKN** (ví dụ: "Ứng dụng GeoGebra trong dạy học Hình học lớp 10").
-3. Chọn **Cấp công nhận**: Cấp trường / Cấp huyện / Cấp tỉnh.
+3. Chọn **Cấp công nhận**: Cấp trường / Cấp phường / Cấp tỉnh.
 4. Điền **Xếp loại**: Tốt / Khá / Xuất sắc.
 5. Nhấn **+ Thêm SKKN**.
 
@@ -93,7 +93,7 @@ Ví dụ:
 **Quy trình:**
 
 1. Chọn **Loại danh hiệu**: Chiến sĩ thi đua / Giáo viên giỏi / GV chủ nhiệm giỏi.
-2. Chọn **Cấp**: Cấp trường / Cấp huyện / Cấp tỉnh.
+2. Chọn **Cấp**: Cấp trường / Cấp phường / Cấp tỉnh.
 3. Nếu chọn "Chiến sĩ thi đua": xuất hiện thêm **Cách đạt**.
    - **Cách 1**: Không cần SKKN — nhấn "Thêm danh hiệu" trực tiếp.
    - **Cách 2 (có SKKN)**: Hệ thống mở cửa sổ chọn SKKN.

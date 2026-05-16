@@ -57,8 +57,9 @@ enum SKKNStatus {
 }
 
 enum AwardType {
-  CERTIFICATE
-  COMMENDATION
+  CERTIFICATE           // Giấy khen
+  COMMENDATION          // Bằng khen
+  CERTIFICATE_OF_MERIT  // Giấy chứng nhận
 }
 
 // =============================================================================
@@ -190,13 +191,16 @@ model SKKN {
 // =============================================================================
 
 model Award {
-  id           String    @id @default(cuid())
-  teacherId    String
-  type         AwardType
-  issuingLevel String
-  content      String
-  year         String
-  createdAt    DateTime  @default(now())
+  id             String    @id @default(cuid())
+  teacherId      String
+  type           AwardType
+  issuingLevel   String
+  content        String
+  year           String
+  decisionNumber String?   // Số quyết định
+  decisionDate   DateTime? // Ngày ra quyết định
+  attachmentUrls Json      @default("[]") // [{url,name,fileType}]
+  createdAt      DateTime  @default(now())
 
   teacher      TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   awardSkkns   AwardSKKN[]

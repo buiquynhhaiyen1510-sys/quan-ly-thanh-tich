@@ -96,7 +96,7 @@ async function checkSKKN(
     where: {
       teacherId,
       ...(condition.statusRequired === 'UNUSED' ? { status: 'UNUSED' } : {}),
-      // Filter by minLevel if specified (SCHOOL < DISTRICT < CITY)
+      // Filter by minLevel if specified (SCHOOL < DISTRICT/phường < CITY)
       ...(condition.minLevel
         ? {
             level: {

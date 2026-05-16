@@ -5,11 +5,20 @@ import { requireTeacher } from '@/lib/api-helpers'
 import { executeConsume, type SKKNCondition } from '@/lib/skkn'
 import type { ConditionInput } from '@/lib/validations/eligibility-rule'
 
+const attachmentSchema = z.object({
+  url: z.string().url(),
+  name: z.string(),
+  fileType: z.enum(['pdf', 'image']),
+})
+
 const createSchema = z.object({
-  type: z.enum(['CERTIFICATE', 'COMMENDATION']),
+  type: z.enum(['CERTIFICATE', 'COMMENDATION', 'CERTIFICATE_OF_MERIT']),
   issuingLevel: z.string().min(1, 'Cần ghi rõ cơ quan khen thưởng'),
   content: z.string().min(3, 'Nội dung khen thưởng quá ngắn'),
   year: z.string().regex(/^\d{4}$/, 'Năm phải có dạng YYYY'),
+  decisionNumber: z.string().optional(),
+  decisionDate: z.string().optional(), // ISO date string
+  attachmentUrls: z.array(attachmentSchema).optional(),
   // Optional SKKN consume — used when the award requires SKKN (e.g. Bằng khen)
   ruleId: z.string().optional(),
   skknIds: z.array(z.string()).optional(),
@@ -34,7 +43,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 422 })
   }
 
-  const { ruleId, skknIds, academicYear, ...awardData } = parsed.data
+  const { ruleId, skknIds, academicYear, decisionDate, attachmentUrls, ...rest } = parsed.data
+  const awardData = {
+    ...rest,
+    decisionDate: decisionDate ? new Date(decisionDate) : null,
+    attachmentUrls: attachmentUrls ?? [],
+  }
   const shouldConsume = ruleId && skknIds && skknIds.length > 0
 
   if (shouldConsume) {

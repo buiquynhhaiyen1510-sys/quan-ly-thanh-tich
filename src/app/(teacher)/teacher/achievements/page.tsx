@@ -36,12 +36,21 @@ interface SKKN {
   usedYear: string | null
 }
 
+interface Attachment {
+  url: string
+  name: string
+  fileType: 'pdf' | 'image'
+}
+
 interface Award {
   id: string
-  type: 'CERTIFICATE' | 'COMMENDATION'
+  type: 'CERTIFICATE' | 'COMMENDATION' | 'CERTIFICATE_OF_MERIT'
   issuingLevel: string
   content: string
   year: string
+  decisionNumber: string | null
+  decisionDate: string | null
+  attachmentUrls: Attachment[]
 }
 
 interface Rule {
@@ -113,7 +122,7 @@ export default function AchievementsPage() {
     try {
       const [achRes, dhRes] = await Promise.all([
         fetch('/api/teacher/achievements'),
-        fetch('/api/admin/danh-hieu'),
+        fetch('/api/teacher/danh-hieu'),
       ])
       if (!achRes.ok) throw new Error('Không thể tải dữ liệu')
       const data = await achRes.json()
@@ -399,16 +408,44 @@ export default function AchievementsPage() {
   }
 
   // --- Award form ---
-  const [awardType, setAwardType] = useState<'CERTIFICATE' | 'COMMENDATION'>('CERTIFICATE')
+  const [awardType, setAwardType] = useState<'CERTIFICATE' | 'COMMENDATION' | 'CERTIFICATE_OF_MERIT'>('CERTIFICATE')
   const [awardIssuer, setAwardIssuer] = useState('')
   const [awardContent, setAwardContent] = useState('')
   const [awardYear, setAwardYear] = useState(endY)
+  const [awardDecisionNumber, setAwardDecisionNumber] = useState('')
+  const [awardDecisionDate, setAwardDecisionDate] = useState('')
+  const [awardAttachments, setAwardAttachments] = useState<Attachment[]>([])
+  const [uploadingFile, setUploadingFile] = useState(false)
   const [addingAward, setAddingAward] = useState(false)
 
   useEffect(() => {
     const [, ey] = selectedYear.split('-')
     setAwardYear(ey)
   }, [selectedYear])
+
+  async function handleUploadFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setUploadingFile(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/teacher/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error ?? 'Upload thất bại')
+      setAwardAttachments(prev => [...prev, { url: data.url, name: data.name, fileType: data.fileType }])
+      showNotification('success', `Đã tải lên: ${file.name}`)
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Upload thất bại')
+    } finally {
+      setUploadingFile(false)
+    }
+  }
+
+  function removeAttachment(idx: number) {
+    setAwardAttachments(prev => prev.filter((_, i) => i !== idx))
+  }
 
   async function handleAddAward(e: React.FormEvent) {
     e.preventDefault()
@@ -423,6 +460,9 @@ export default function AchievementsPage() {
           issuingLevel: awardIssuer.trim(),
           content: awardContent.trim(),
           year: awardYear,
+          decisionNumber: awardDecisionNumber.trim() || undefined,
+          decisionDate: awardDecisionDate || undefined,
+          attachmentUrls: awardAttachments,
         }),
       })
       if (!res.ok) {
@@ -431,6 +471,9 @@ export default function AchievementsPage() {
       }
       setAwardIssuer('')
       setAwardContent('')
+      setAwardDecisionNumber('')
+      setAwardDecisionDate('')
+      setAwardAttachments([])
       await fetchAll()
       showNotification('success', 'Đã thêm khen thưởng')
     } catch (err) {
@@ -858,29 +901,46 @@ export default function AchievementsPage() {
 
         {yearAwards.length > 0 && (
           <div className="mb-4 divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
-            {yearAwards.map(a => (
-              <div key={a.id} className="flex items-start justify-between px-4 py-3 gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">{a.content}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {a.type === 'CERTIFICATE' ? 'Giấy khen' : 'Bằng khen'} · {a.issuingLevel} · Năm {a.year}
-                  </p>
+            {yearAwards.map(a => {
+              const typeLabel = a.type === 'CERTIFICATE' ? 'Giấy khen' : a.type === 'COMMENDATION' ? 'Bằng khen' : 'Giấy chứng nhận'
+              const attachments: Attachment[] = Array.isArray(a.attachmentUrls) ? a.attachmentUrls : []
+              return (
+                <div key={a.id} className="px-4 py-3 flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{a.content}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {typeLabel} · {a.issuingLevel} · Năm {a.year}
+                      {a.decisionNumber && <> · Số QĐ: {a.decisionNumber}</>}
+                      {a.decisionDate && <> · {new Date(a.decisionDate).toLocaleDateString('vi-VN')}</>}
+                    </p>
+                    {attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {attachments.map((att, i) => (
+                          <a key={i} href={att.url} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline bg-blue-50 px-2 py-0.5 rounded">
+                            {att.fileType === 'pdf' ? '📄' : '🖼️'} {att.name}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleDeleteAward(a.id)}
+                    className="text-xs text-red-600 hover:text-red-700 hover:underline flex-shrink-0"
+                  >
+                    Xóa
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleDeleteAward(a.id)}
-                  className="text-xs text-red-600 hover:text-red-700 hover:underline flex-shrink-0"
-                >
-                  Xóa
-                </button>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 
         <form onSubmit={handleAddAward} className="space-y-3">
+          {/* Row 1: loại + năm */}
           <div className="flex flex-wrap gap-3">
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Loại</label>
+              <label className="block text-xs text-gray-600 mb-1">Hình thức</label>
               <select
                 value={awardType}
                 onChange={e => setAwardType(e.target.value as typeof awardType)}
@@ -889,6 +949,7 @@ export default function AchievementsPage() {
               >
                 <option value="CERTIFICATE">Giấy khen</option>
                 <option value="COMMENDATION">Bằng khen</option>
+                <option value="CERTIFICATE_OF_MERIT">Giấy chứng nhận</option>
               </select>
             </div>
             <div>
@@ -903,6 +964,8 @@ export default function AchievementsPage() {
               />
             </div>
           </div>
+
+          {/* Row 2: cơ quan */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Cơ quan khen thưởng <span className="text-red-500">*</span>
@@ -911,11 +974,13 @@ export default function AchievementsPage() {
               type="text"
               value={awardIssuer}
               onChange={e => setAwardIssuer(e.target.value)}
-              placeholder="BGH Trường / UBND Quận / Sở GD-ĐT..."
+              placeholder="BGH Trường / UBND Phường / Sở GD-ĐT..."
               data-testid="input-award-issuer"
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          {/* Row 3: nội dung */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Nội dung khen thưởng <span className="text-red-500">*</span>
@@ -929,6 +994,59 @@ export default function AchievementsPage() {
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          {/* Row 4: số QĐ + ngày QĐ */}
+          <div className="flex flex-wrap gap-3">
+            <div className="flex-1 min-w-44">
+              <label className="block text-xs text-gray-600 mb-1">Số quyết định</label>
+              <input
+                type="text"
+                value={awardDecisionNumber}
+                onChange={e => setAwardDecisionNumber(e.target.value)}
+                placeholder="VD: 123/QĐ-UBND"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Ngày ra quyết định</label>
+              <input
+                type="date"
+                value={awardDecisionDate}
+                onChange={e => setAwardDecisionDate(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              />
+            </div>
+          </div>
+
+          {/* Row 5: minh chứng */}
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Minh chứng (PDF, ảnh — tối đa 10 MB/file)</label>
+            <div className="flex items-center gap-2">
+              <label className={`cursor-pointer inline-flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${uploadingFile ? 'opacity-50 pointer-events-none' : ''}`}>
+                <span>{uploadingFile ? 'Đang tải lên...' : '📎 Chọn file'}</span>
+                <input
+                  type="file"
+                  accept=".pdf,image/*"
+                  className="sr-only"
+                  onChange={handleUploadFile}
+                  disabled={uploadingFile}
+                />
+              </label>
+              <span className="text-xs text-gray-400">PDF hoặc ảnh JPG/PNG</span>
+            </div>
+            {awardAttachments.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {awardAttachments.map((att, i) => (
+                  <div key={i} className="inline-flex items-center gap-1.5 text-xs bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded">
+                    {att.fileType === 'pdf' ? '📄' : '🖼️'}
+                    <a href={att.url} target="_blank" rel="noopener noreferrer" className="hover:underline max-w-32 truncate">{att.name}</a>
+                    <button type="button" onClick={() => removeAttachment(i)} className="text-red-500 hover:text-red-700 ml-0.5">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <button
             type="submit"
             disabled={addingAward || !awardIssuer.trim() || !awardContent.trim()}

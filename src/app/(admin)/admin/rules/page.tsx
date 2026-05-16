@@ -179,7 +179,7 @@ function ConditionEditor({
               >
                 <option value="">Không giới hạn</option>
                 <option value="SCHOOL">Cấp trường trở lên</option>
-                <option value="DISTRICT">Cấp huyện trở lên</option>
+                <option value="DISTRICT">Cấp phường trở lên</option>
                 <option value="CITY">Cấp tỉnh/TP</option>
               </select>
             </div>
@@ -647,7 +647,7 @@ export default function RulesPage() {
                                 {c.type === 'TASK_RESULT' && c.taskResults?.length
                                   ? ` (${c.taskResults.map(r => r === 'GOOD' ? 'HTTốt' : 'HTXS').join('/')})`
                                   : ''}
-                                {c.type === 'SKKN' && c.minLevel ? ` cấp ${c.minLevel === 'SCHOOL' ? 'trường' : c.minLevel === 'DISTRICT' ? 'huyện' : 'tỉnh'}+` : ''}
+                                {c.type === 'SKKN' && c.minLevel ? ` cấp ${c.minLevel === 'SCHOOL' ? 'trường' : c.minLevel === 'DISTRICT' ? 'phường' : 'tỉnh'}+` : ''}
                               </span>
                             ))}
                           </div>

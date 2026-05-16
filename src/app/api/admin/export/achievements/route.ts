@@ -100,14 +100,21 @@ export async function GET(request: NextRequest) {
   )
 
   // Sheet 4: Khen thưởng
+  const AWARD_TYPE_LABELS: Record<string, string> = {
+    CERTIFICATE: 'Giấy khen',
+    COMMENDATION: 'Bằng khen',
+    CERTIFICATE_OF_MERIT: 'Giấy chứng nhận',
+  }
   const awardSheet = teachers.flatMap(t =>
     t.awards.map(a => ({
       'Họ tên': t.fullName,
       'Tổ': t.department,
-      'Loại': a.type === 'CERTIFICATE' ? 'Giấy khen' : 'Bằng khen',
+      'Hình thức': AWARD_TYPE_LABELS[a.type] ?? a.type,
       'Cơ quan khen': a.issuingLevel,
       'Nội dung': a.content,
       'Năm': a.year,
+      'Số QĐ': a.decisionNumber ?? '',
+      'Ngày QĐ': a.decisionDate ? new Date(a.decisionDate).toLocaleDateString('vi-VN') : '',
     }))
   )
 

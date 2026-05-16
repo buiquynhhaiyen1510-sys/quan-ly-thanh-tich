@@ -146,7 +146,7 @@ async function main() {
   // ---------------------------------------------------------------------------
   const defaultDanhHieus = [
     { name: 'Chiến sĩ thi đua cơ sở', description: 'Danh hiệu thi đua cơ sở hàng năm', order: 0 },
-    { name: 'Giáo viên giỏi', description: 'GV đạt danh hiệu giỏi cấp trường/huyện/tỉnh', order: 1 },
+    { name: 'Giáo viên giỏi', description: 'GV đạt danh hiệu giỏi cấp trường/phường/tỉnh', order: 1 },
     { name: 'GV chủ nhiệm giỏi', description: 'Giáo viên chủ nhiệm giỏi', order: 2 },
   ]
 
