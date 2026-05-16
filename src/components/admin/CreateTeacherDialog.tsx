@@ -108,6 +108,7 @@ export function CreateTeacherDialog({
         fullName: '',
         email: '',
         password: '',
+        role: 'TEACHER',
         dateOfBirth: '',
         department: '',
         teachingSince: '',
