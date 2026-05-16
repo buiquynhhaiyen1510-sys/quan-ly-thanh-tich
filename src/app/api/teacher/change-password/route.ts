@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { compare, hash } from 'bcryptjs'
 import { db } from '@/lib/db'

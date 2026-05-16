@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextResponse } from 'next/server'
 import { v2 as cloudinary } from 'cloudinary'
 import { requireAuth } from '@/lib/api-helpers'
