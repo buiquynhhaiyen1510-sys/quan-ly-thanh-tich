@@ -145,6 +145,25 @@ export default function AchievementsReportPage() {
     })
   }, [rawData, filterTaskResult, filterSKKNLevel, filterTitleType, filterAwardType])
 
+  // Chỉ hiển thị các option filter có dữ liệu thực tế
+  const availableTitleTypes = useMemo(() => {
+    const types = new Set<string>()
+    rawData.forEach(t => t.yearlyRecord?.competitionTitles.forEach(ct => types.add(ct.type)))
+    return types
+  }, [rawData])
+
+  const availableSKKNLevels = useMemo(() => {
+    const levels = new Set<string>()
+    rawData.forEach(t => t.skkns.forEach(s => levels.add(s.level)))
+    return levels
+  }, [rawData])
+
+  const availableAwardTypes = useMemo(() => {
+    const types = new Set<string>()
+    rawData.forEach(t => t.awards.forEach(a => types.add(a.type)))
+    return types
+  }, [rawData])
+
   const totalHTXS = data.filter(t => t.yearlyRecord?.taskResult === 'EXCELLENT').length
   const totalHTTot = data.filter(t => t.yearlyRecord?.taskResult === 'GOOD').length
   const totalWithSKKN = data.filter(t => t.skkns.length > 0).length
@@ -219,52 +238,64 @@ export default function AchievementsReportPage() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
-              Danh hiệu thi đua
-            </label>
-            <select
-              value={filterTitleType}
-              onChange={e => setFilterTitleType(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">Tất cả</option>
-              <option value="CHIEN_SI_THI_DUA">Chiến sĩ thi đua (CSTĐ)</option>
-              <option value="GV_GIOI">Giáo viên giỏi</option>
-              <option value="GV_CN_GIOI">GV chủ nhiệm giỏi</option>
-            </select>
-          </div>
+          {availableTitleTypes.size > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+                Danh hiệu thi đua
+              </label>
+              <select
+                value={filterTitleType}
+                onChange={e => setFilterTitleType(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Tất cả</option>
+                {availableTitleTypes.has('CHIEN_SI_THI_DUA') && (
+                  <option value="CHIEN_SI_THI_DUA">Chiến sĩ thi đua (CSTĐ)</option>
+                )}
+                {availableTitleTypes.has('GV_GIOI') && (
+                  <option value="GV_GIOI">Giáo viên giỏi</option>
+                )}
+                {availableTitleTypes.has('GV_CN_GIOI') && (
+                  <option value="GV_CN_GIOI">GV chủ nhiệm giỏi</option>
+                )}
+              </select>
+            </div>
+          )}
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
-              Cấp SKKN
-            </label>
-            <select
-              value={filterSKKNLevel}
-              onChange={e => setFilterSKKNLevel(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">Tất cả</option>
-              <option value="SCHOOL">Cấp trường</option>
-              <option value="DISTRICT">Cấp phường</option>
-              <option value="CITY">Cấp tỉnh/TP</option>
-            </select>
-          </div>
+          {availableSKKNLevels.size > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+                Cấp SKKN
+              </label>
+              <select
+                value={filterSKKNLevel}
+                onChange={e => setFilterSKKNLevel(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Tất cả</option>
+                {availableSKKNLevels.has('SCHOOL') && <option value="SCHOOL">Cấp trường</option>}
+                {availableSKKNLevels.has('DISTRICT') && <option value="DISTRICT">Cấp phường</option>}
+                {availableSKKNLevels.has('CITY') && <option value="CITY">Cấp tỉnh/TP</option>}
+              </select>
+            </div>
+          )}
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
-              Khen thưởng
-            </label>
-            <select
-              value={filterAwardType}
-              onChange={e => setFilterAwardType(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">Tất cả</option>
-              <option value="CERTIFICATE">Giấy khen</option>
-              <option value="COMMENDATION">Bằng khen</option>
-            </select>
-          </div>
+          {availableAwardTypes.size > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+                Khen thưởng
+              </label>
+              <select
+                value={filterAwardType}
+                onChange={e => setFilterAwardType(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Tất cả</option>
+                {availableAwardTypes.has('CERTIFICATE') && <option value="CERTIFICATE">Giấy khen</option>}
+                {availableAwardTypes.has('COMMENDATION') && <option value="COMMENDATION">Bằng khen</option>}
+              </select>
+            </div>
+          )}
 
           {hasActiveFilter && (
             <button
