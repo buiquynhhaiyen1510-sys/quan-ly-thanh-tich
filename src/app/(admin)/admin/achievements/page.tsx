@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 
 interface CompetitionTitle {
@@ -61,9 +61,9 @@ const TITLE_LABELS: Record<string, string> = {
   GV_CN_GIOI: 'GV CN Giỏi',
 }
 const LEVEL_LABELS: Record<string, string> = {
-  SCHOOL: 'Trường',
-  DISTRICT: 'Phường',
-  CITY: 'Tỉnh/TP',
+  SCHOOL: 'Cấp trường',
+  DISTRICT: 'Cấp phường',
+  CITY: 'Cấp tỉnh/TP',
 }
 const METHOD_LABELS: Record<string, string> = {
   METHOD_1: 'HTXS',
@@ -83,9 +83,17 @@ export default function AchievementsReportPage() {
   const currentYear = new Date().getFullYear()
   const defaultYear = `${currentYear - 1}-${currentYear}`
 
+  // Server-side filters
   const [year, setYear] = useState(defaultYear)
   const [department, setDepartment] = useState('')
-  const [data, setData] = useState<TeacherStat[]>([])
+
+  // Client-side filters
+  const [filterTaskResult, setFilterTaskResult] = useState('')
+  const [filterSKKNLevel, setFilterSKKNLevel] = useState('')
+  const [filterTitleType, setFilterTitleType] = useState('')
+  const [filterAwardType, setFilterAwardType] = useState('')
+
+  const [rawData, setRawData] = useState<TeacherStat[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -107,7 +115,7 @@ export default function AchievementsReportPage() {
       const params = new URLSearchParams({ year })
       if (department) params.set('department', department)
       const res = await fetch(`/api/admin/achievements-report?${params}`)
-      if (res.ok) setData(await res.json())
+      if (res.ok) setRawData(await res.json())
     } catch {
       // ignore
     } finally {
@@ -115,10 +123,41 @@ export default function AchievementsReportPage() {
     }
   }
 
+  // Áp dụng bộ lọc client-side
+  const data = useMemo(() => {
+    return rawData.filter(t => {
+      if (filterTaskResult === 'NOT_ENTERED' && t.yearlyRecord) return false
+      if (filterTaskResult === 'NOT_ENTERED' && !t.yearlyRecord) return true
+      if (filterTaskResult && filterTaskResult !== 'NOT_ENTERED') {
+        if (t.yearlyRecord?.taskResult !== filterTaskResult) return false
+      }
+      if (filterSKKNLevel) {
+        if (!t.skkns.some(s => s.level === filterSKKNLevel)) return false
+      }
+      if (filterTitleType) {
+        const titles = t.yearlyRecord?.competitionTitles ?? []
+        if (!titles.some(tt => tt.type === filterTitleType)) return false
+      }
+      if (filterAwardType) {
+        if (!t.awards.some(a => a.type === filterAwardType)) return false
+      }
+      return true
+    })
+  }, [rawData, filterTaskResult, filterSKKNLevel, filterTitleType, filterAwardType])
+
   const totalHTXS = data.filter(t => t.yearlyRecord?.taskResult === 'EXCELLENT').length
   const totalHTTot = data.filter(t => t.yearlyRecord?.taskResult === 'GOOD').length
   const totalWithSKKN = data.filter(t => t.skkns.length > 0).length
   const totalNotEntered = data.filter(t => !t.yearlyRecord).length
+
+  function resetFilters() {
+    setFilterTaskResult('')
+    setFilterSKKNLevel('')
+    setFilterTitleType('')
+    setFilterAwardType('')
+  }
+
+  const hasActiveFilter = filterTaskResult || filterSKKNLevel || filterTitleType || filterAwardType
 
   return (
     <div className="space-y-6">
@@ -128,35 +167,113 @@ export default function AchievementsReportPage() {
       </div>
 
       {/* Bộ lọc */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 flex flex-wrap gap-4 items-end">
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
-            Năm học
-          </label>
-          <select
-            value={year}
-            onChange={e => setYear(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          >
-            {generateAcademicYears().map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
+      <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
+        {/* Hàng 1: Năm học + Tổ chuyên môn (server-side) */}
+        <div className="flex flex-wrap gap-4 items-end">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+              Năm học
+            </label>
+            <select
+              value={year}
+              onChange={e => setYear(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              {generateAcademicYears().map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+              Tổ chuyên môn
+            </label>
+            <select
+              value={department}
+              onChange={e => setDepartment(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">Tất cả tổ</option>
+              {departments.map(d => (
+                <option key={d.id} value={d.name}>{d.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
-            Tổ chuyên môn
-          </label>
-          <select
-            value={department}
-            onChange={e => setDepartment(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          >
-            <option value="">Tất cả tổ</option>
-            {departments.map(d => (
-              <option key={d.id} value={d.name}>{d.name}</option>
-            ))}
-          </select>
+
+        {/* Hàng 2: Bộ lọc nâng cao (client-side) */}
+        <div className="flex flex-wrap gap-4 items-end pt-2 border-t border-gray-100">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+              KQ nhiệm vụ
+            </label>
+            <select
+              value={filterTaskResult}
+              onChange={e => setFilterTaskResult(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">Tất cả</option>
+              <option value="EXCELLENT">HTXS</option>
+              <option value="GOOD">HTTốt</option>
+              <option value="NOT_ENTERED">Chưa nhập</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+              Danh hiệu thi đua
+            </label>
+            <select
+              value={filterTitleType}
+              onChange={e => setFilterTitleType(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">Tất cả</option>
+              <option value="CHIEN_SI_THI_DUA">Chiến sĩ thi đua (CSTĐ)</option>
+              <option value="GV_GIOI">Giáo viên giỏi</option>
+              <option value="GV_CN_GIOI">GV chủ nhiệm giỏi</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+              Cấp SKKN
+            </label>
+            <select
+              value={filterSKKNLevel}
+              onChange={e => setFilterSKKNLevel(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">Tất cả</option>
+              <option value="SCHOOL">Cấp trường</option>
+              <option value="DISTRICT">Cấp phường</option>
+              <option value="CITY">Cấp tỉnh/TP</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+              Khen thưởng
+            </label>
+            <select
+              value={filterAwardType}
+              onChange={e => setFilterAwardType(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">Tất cả</option>
+              <option value="CERTIFICATE">Giấy khen</option>
+              <option value="COMMENDATION">Bằng khen</option>
+            </select>
+          </div>
+
+          {hasActiveFilter && (
+            <button
+              onClick={resetFilters}
+              className="text-sm text-gray-500 hover:text-gray-700 underline"
+            >
+              Xóa bộ lọc
+            </button>
+          )}
         </div>
       </div>
 
@@ -184,7 +301,7 @@ export default function AchievementsReportPage() {
           </div>
         ) : data.length === 0 ? (
           <div className="flex items-center justify-center py-16">
-            <p className="text-sm text-gray-400">Không có dữ liệu</p>
+            <p className="text-sm text-gray-400">Không có giáo viên nào khớp bộ lọc</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -266,6 +383,11 @@ export default function AchievementsReportPage() {
                             {usedSKKN > 0 && (
                               <span className="text-amber-600 block">{usedSKKN} đã dùng</span>
                             )}
+                            {filterSKKNLevel && (
+                              <span className="text-gray-400 block">
+                                ({t.skkns.filter(s => s.level === filterSKKNLevel).length} {LEVEL_LABELS[filterSKKNLevel]})
+                              </span>
+                            )}
                           </div>
                         )}
                       </td>
@@ -300,7 +422,8 @@ export default function AchievementsReportPage() {
           </div>
         )}
         <div className="px-4 py-3 border-t border-gray-100 text-xs text-gray-400">
-          Hiển thị {data.length} giáo viên · Năm học {year}
+          Hiển thị {data.length} / {rawData.length} giáo viên · Năm học {year}
+          {hasActiveFilter && ' · Đang lọc'}
         </div>
       </div>
     </div>
