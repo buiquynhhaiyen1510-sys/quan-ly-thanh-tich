@@ -3,9 +3,16 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 
 // --- Types ---
+interface DanhHieu {
+  id: string
+  name: string
+  isActive: boolean
+}
+
 interface CompetitionTitle {
   id: string
-  type: 'CHIEN_SI_THI_DUA' | 'GV_GIOI' | 'GV_CN_GIOI'
+  danhHieuId: string
+  danhHieu?: { name: string }
   level: 'SCHOOL' | 'DISTRICT' | 'CITY' | null
   achievementMethod: 'METHOD_1' | 'METHOD_2' | null
 }
@@ -70,12 +77,6 @@ function generateYears(): string[] {
   return years
 }
 
-const TITLE_TYPE_LABELS: Record<string, string> = {
-  CHIEN_SI_THI_DUA: 'Chiến sĩ thi đua',
-  GV_GIOI: 'Giáo viên giỏi',
-  GV_CN_GIOI: 'GV chủ nhiệm giỏi',
-}
-
 const LEVEL_LABELS: Record<string, string> = {
   SCHOOL: 'Cấp trường',
   DISTRICT: 'Cấp huyện',
@@ -100,6 +101,7 @@ export default function AchievementsPage() {
   }>({ yearlyRecords: [], skkns: [], awards: [] })
 
   const [loading, setLoading] = useState(true)
+  const [danhHieus, setDanhHieus] = useState<DanhHieu[]>([])
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   function showNotification(type: 'success' | 'error', message: string) {
@@ -110,10 +112,17 @@ export default function AchievementsPage() {
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/teacher/achievements')
-      if (!res.ok) throw new Error('Không thể tải dữ liệu')
-      const data = await res.json()
+      const [achRes, dhRes] = await Promise.all([
+        fetch('/api/teacher/achievements'),
+        fetch('/api/admin/danh-hieu'),
+      ])
+      if (!achRes.ok) throw new Error('Không thể tải dữ liệu')
+      const data = await achRes.json()
       setAllData(data)
+      if (dhRes.ok) {
+        const dhData: DanhHieu[] = await dhRes.json()
+        setDanhHieus(dhData.filter(d => d.isActive))
+      }
     } catch {
       showNotification('error', 'Không thể tải dữ liệu thành tích')
     } finally {
@@ -171,7 +180,7 @@ export default function AchievementsPage() {
   }
 
   // --- Competition title form ---
-  const [titleType, setTitleType] = useState<'CHIEN_SI_THI_DUA' | 'GV_GIOI' | 'GV_CN_GIOI'>('CHIEN_SI_THI_DUA')
+  const [titleDanhHieuId, setTitleDanhHieuId] = useState('')
   const [titleLevel, setTitleLevel] = useState<'SCHOOL' | 'DISTRICT' | 'CITY'>('SCHOOL')
   const [titleMethod, setTitleMethod] = useState<'METHOD_1' | 'METHOD_2' | ''>('')
   const [addingTitle, setAddingTitle] = useState(false)
@@ -239,7 +248,7 @@ export default function AchievementsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           yearlyRecordId: yearRecord.id,
-          type: titleType,
+          danhHieuId: titleDanhHieuId,
           level: titleLevel,
           achievementMethod: 'METHOD_2',
           ruleId: modalRuleId,
@@ -265,7 +274,11 @@ export default function AchievementsPage() {
       showNotification('error', 'Cần lưu kết quả năm học trước')
       return
     }
-    if (titleType === 'CHIEN_SI_THI_DUA' && titleMethod === 'METHOD_2') {
+    if (!titleDanhHieuId) {
+      showNotification('error', 'Vui lòng chọn loại danh hiệu')
+      return
+    }
+    if (titleMethod === 'METHOD_2') {
       prevRuleIdRef.current = ''
       await openSKKNModal()
       return
@@ -277,9 +290,9 @@ export default function AchievementsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           yearlyRecordId: yearRecord.id,
-          type: titleType,
+          danhHieuId: titleDanhHieuId,
           level: titleLevel,
-          achievementMethod: titleType === 'CHIEN_SI_THI_DUA' && titleMethod ? titleMethod : null,
+          achievementMethod: titleMethod || null,
         }),
       })
       if (!res.ok) {
@@ -507,7 +520,9 @@ export default function AchievementsPage() {
             {yearRecord.competitionTitles.map(t => (
               <div key={t.id} className="flex items-center justify-between px-4 py-2.5">
                 <div className="text-sm text-gray-800">
-                  <span className="font-medium">{TITLE_TYPE_LABELS[t.type]}</span>
+                  <span className="font-medium">
+                    {t.danhHieu?.name ?? danhHieus.find(d => d.id === t.danhHieuId)?.name ?? t.danhHieuId}
+                  </span>
                   {t.level && <span className="text-gray-500"> — {LEVEL_LABELS[t.level]}</span>}
                   {t.achievementMethod && (
                     <span className="text-gray-400 text-xs ml-1">({t.achievementMethod === 'METHOD_1' ? 'Cách 1' : 'Cách 2'})</span>
@@ -533,16 +548,21 @@ export default function AchievementsPage() {
         <div className="flex flex-wrap gap-3 items-end">
           <div>
             <label className="block text-xs text-gray-600 mb-1">Loại danh hiệu</label>
-            <select
-              value={titleType}
-              onChange={e => setTitleType(e.target.value as typeof titleType)}
-              data-testid="select-titleType"
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="CHIEN_SI_THI_DUA">Chiến sĩ thi đua</option>
-              <option value="GV_GIOI">Giáo viên giỏi</option>
-              <option value="GV_CN_GIOI">GV chủ nhiệm giỏi</option>
-            </select>
+            {danhHieus.length === 0 ? (
+              <p className="text-xs text-gray-400 italic py-2">Admin chưa tạo danh mục danh hiệu</p>
+            ) : (
+              <select
+                value={titleDanhHieuId}
+                onChange={e => setTitleDanhHieuId(e.target.value)}
+                data-testid="select-titleType"
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">-- Chọn danh hiệu --</option>
+                {danhHieus.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <label className="block text-xs text-gray-600 mb-1">Cấp</label>
@@ -556,20 +576,18 @@ export default function AchievementsPage() {
               <option value="CITY">Cấp tỉnh/TP</option>
             </select>
           </div>
-          {titleType === 'CHIEN_SI_THI_DUA' && (
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Cách đạt</label>
-              <select
-                value={titleMethod}
-                onChange={e => setTitleMethod(e.target.value as typeof titleMethod)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="">Không chọn</option>
-                <option value="METHOD_1">Cách 1</option>
-                <option value="METHOD_2">Cách 2 (có SKKN)</option>
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Cách đạt</label>
+            <select
+              value={titleMethod}
+              onChange={e => setTitleMethod(e.target.value as typeof titleMethod)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">Không chọn</option>
+              <option value="METHOD_1">Cách 1</option>
+              <option value="METHOD_2">Cách 2 (có SKKN)</option>
+            </select>
+          </div>
           <button
             onClick={handleAddTitle}
             disabled={addingTitle || !yearRecord}

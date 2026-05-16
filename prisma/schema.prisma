@@ -1,11 +1,7 @@
 // =============================================================================
 // Prisma Schema — Quản lý Thành tích Giáo viên
 // Stack: Prisma ORM + Supabase PostgreSQL
-// Last updated: 2026-03-28
-//
-// Connection strings (see .env.example):
-//   DATABASE_URL  → pgBouncer pooling (runtime queries)
-//   DIRECT_URL    → direct connection (prisma migrate)
+// Last updated: 2026-05-16
 // =============================================================================
 
 datasource db {
@@ -35,12 +31,6 @@ enum TaskResult {
 enum PartyRating {
   GOOD
   EXCELLENT
-}
-
-enum CompetitionTitleType {
-  CHIEN_SI_THI_DUA
-  GV_GIOI
-  GV_CN_GIOI
 }
 
 enum TitleLevel {
@@ -94,10 +84,10 @@ model TeacherProfile {
   userId        String    @unique
   fullName      String
   dateOfBirth   DateTime?
-  department    String    // Tổ chuyên môn
-  teachingSince Int       // Năm vào nghề (integer, e.g. 2010)
+  department    String
+  teachingSince Int
   isPartyMember Boolean   @default(false)
-  partyJoinDate DateTime? // Chỉ set nếu isPartyMember = true
+  partyJoinDate DateTime?
 
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   yearlyRecords YearlyRecord[]
@@ -109,25 +99,45 @@ model TeacherProfile {
 }
 
 // =============================================================================
-// YEARLY RECORD (Thành tích theo năm học)
+// YEARLY RECORD
 // =============================================================================
 
 model YearlyRecord {
   id           String      @id @default(cuid())
   teacherId    String
-  academicYear String      // Format: "2024-2025"
+  academicYear String
   taskResult   TaskResult
-  partyRating  PartyRating? // Null nếu GV không phải đảng viên
+  partyRating  PartyRating?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
   teacher           TeacherProfile     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   competitionTitles CompetitionTitle[]
 
-  // Mỗi GV chỉ có 1 record per năm học
   @@unique([teacherId, academicYear])
   @@index([teacherId])
   @@map("yearly_records")
+}
+
+// =============================================================================
+// DANH HIỆU (Achievement Title Catalog — Admin-configurable)
+// Thay thế enum CompetitionTitleType cứng; Admin CRUD qua /admin/danh-hieu
+// =============================================================================
+
+model DanhHieu {
+  id          String   @id @default(cuid())
+  name        String   @unique  // "Chiến sĩ thi đua cơ sở", "GV Giỏi", ...
+  description String?
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  competitionTitles CompetitionTitle[]
+  eligibilityRules  EligibilityRule[]
+
+  @@index([isActive])
+  @@map("danh_hieus")
 }
 
 // =============================================================================
@@ -137,18 +147,20 @@ model YearlyRecord {
 model CompetitionTitle {
   id                String             @id @default(cuid())
   yearlyRecordId    String
-  type              CompetitionTitleType
-  level             TitleLevel?        // Null với CHIEN_SI_THI_DUA (cơ sở = implicit)
-  achievementMethod AchievementMethod? // Chỉ dùng với CHIEN_SI_THI_DUA
+  danhHieuId        String             // FK → DanhHieu (thay thế enum type cũ)
+  level             TitleLevel?
+  achievementMethod AchievementMethod?
 
-  yearlyRecord      YearlyRecord       @relation(fields: [yearlyRecordId], references: [id], onDelete: Cascade)
+  yearlyRecord YearlyRecord @relation(fields: [yearlyRecordId], references: [id], onDelete: Cascade)
+  danhHieu     DanhHieu     @relation(fields: [danhHieuId], references: [id])
 
   @@index([yearlyRecordId])
+  @@index([danhHieuId])
   @@map("competition_titles")
 }
 
 // =============================================================================
-// SKKN (Sáng kiến kinh nghiệm)
+// SKKN
 // =============================================================================
 
 model SKKN {
@@ -156,11 +168,11 @@ model SKKN {
   teacherId    String
   title        String
   level        SKKNLevel
-  rating       String     // Ví dụ: "Tốt", "Khá", "Xuất sắc"
-  academicYear String     // Format: "2024-2025"
+  rating       String
+  academicYear String
   status       SKKNStatus @default(UNUSED)
-  usedFor      String?    // Tên danh hiệu đã dùng để xét (nullable)
-  usedYear     String?    // Năm xét duyệt (nullable)
+  usedFor      String?
+  usedYear     String?
   createdAt    DateTime   @default(now())
 
   teacher      TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
@@ -173,16 +185,16 @@ model SKKN {
 }
 
 // =============================================================================
-// AWARD (Khen thưởng)
+// AWARD
 // =============================================================================
 
 model Award {
   id           String    @id @default(cuid())
   teacherId    String
   type         AwardType
-  issuingLevel String    // Ví dụ: "UBND Thành phố", "BGH Trường", "Sở GD&ĐT"
-  content      String    // Nội dung khen thưởng
-  year         String    // Năm (ví dụ: "2024")
+  issuingLevel String
+  content      String
+  year         String
   createdAt    DateTime  @default(now())
 
   teacher      TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
@@ -194,8 +206,7 @@ model Award {
 }
 
 // =============================================================================
-// AWARD <-> SKKN (junction table)
-// Bảng trung gian nối Award với SKKN đã được tiêu để xét thưởng đó
+// AWARD <-> SKKN junction
 // =============================================================================
 
 model AwardSKKN {
@@ -213,33 +224,30 @@ model AwardSKKN {
 }
 
 // =============================================================================
-// ELIGIBILITY RULE (Quy tắc xét danh hiệu — rule-driven, không hardcode)
-// ADR-005, ADR-007: conditions lưu dạng JSON (jsonb trong PostgreSQL)
+// ELIGIBILITY RULE — Rule-driven, không hardcode (ADR-005, ADR-007)
 //
-// TypeScript type cho conditions (xem DATABASE.md để biết full schema):
+// conditions: EligibilityConditions JSON
+//   {
+//     anyOf: Array<{               ← OR: ít nhất 1 nhóm phải thỏa
+//       label?: string             ← "Cách 1", "Cách 2"
+//       conditions: Condition[]    ← AND: tất cả điều kiện trong nhóm
+//     }>
+//   }
 //
-// type Condition = {
-//   type: 'SKKN' | 'COMPETITION_TITLE' | 'AWARD' | 'TASK_RESULT'
-//   minCount: number
-//   statusRequired: 'UNUSED' | 'ANY'
-//   yearConstraint:
-//     | { type: 'CURRENT_YEAR' }
-//     | { type: 'WITHIN_N_YEARS'; n: number }
-//     | { type: 'ANY' }
-//   consumeAfterEval: boolean
-//   legalNote?: string
-// }
-//
-// EligibilityRule.conditions is Condition[]
+// Backward compat: nếu là Condition[] (array thuần), engine tự wrap thành
+// { anyOf: [{ conditions: [...] }] } (single group, all AND).
 // =============================================================================
 
 model EligibilityRule {
   id          String   @id @default(cuid())
-  targetTitle String   // Tên danh hiệu, ví dụ: "Chiến sĩ thi đua cơ sở"
-  conditions  Json     // Condition[] — validated bởi Zod tại application layer
+  danhHieuId  String?  // Optional FK → DanhHieu
+  targetTitle String   // Display name (có thể đồng bộ từ danhHieu.name)
+  conditions  Json     // EligibilityConditions { anyOf: ConditionGroup[] }
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  danhHieu    DanhHieu? @relation(fields: [danhHieuId], references: [id])
 
   @@index([targetTitle])
   @@index([isActive])
@@ -248,8 +256,8 @@ model EligibilityRule {
 
 model Department {
   id        String   @id @default(cuid())
-  name      String   @unique // Tên tổ, ví dụ: "Tổ Toán - Tin"
-  order     Int      @default(0) // Thứ tự hiển thị
+  name      String   @unique
+  order     Int      @default(0)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

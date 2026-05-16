@@ -5,11 +5,6 @@ import { db } from '@/lib/db'
 import { buildWorkbook, excelResponse } from '@/lib/excel'
 import { parseAcademicYear } from '@/lib/skkn'
 
-const TITLE_TYPE_LABELS: Record<string, string> = {
-  CHIEN_SI_THI_DUA: 'Chiến sĩ thi đua',
-  GV_GIOI: 'Giáo viên giỏi',
-  GV_CN_GIOI: 'GV chủ nhiệm giỏi',
-}
 const LEVEL_LABELS: Record<string, string> = {
   SCHOOL: 'Cấp trường',
   DISTRICT: 'Cấp huyện',
@@ -47,7 +42,7 @@ export async function GET(request: NextRequest) {
       user: { select: { isActive: true } },
       yearlyRecords: {
         where: { academicYear: year },
-        include: { competitionTitles: true },
+        include: { competitionTitles: { include: { danhHieu: true } } },
       },
       skkns: {
         where: { academicYear: year },
@@ -82,7 +77,7 @@ export async function GET(request: NextRequest) {
       'Họ tên': t.fullName,
       'Tổ': t.department,
       'Năm học': year,
-      'Danh hiệu': TITLE_TYPE_LABELS[ct.type] ?? ct.type,
+      'Danh hiệu': ct.danhHieu?.name ?? ct.danhHieuId,
       'Cấp': ct.level ? (LEVEL_LABELS[ct.level] ?? ct.level) : '',
       'Cách đạt': ct.achievementMethod === 'METHOD_1' ? 'Cách 1' : ct.achievementMethod === 'METHOD_2' ? 'Cách 2' : '',
     }))

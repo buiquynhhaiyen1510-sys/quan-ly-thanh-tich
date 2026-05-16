@@ -26,6 +26,7 @@ function makeRule(conditions: ConditionInput[], overrides: Partial<EligibilityRu
   return {
     id: 'rule-1',
     targetTitle: 'Chiến sĩ thi đua cơ sở',
+    danhHieuId: null,
     conditions: conditions as unknown as import('@prisma/client').Prisma.JsonValue,
     isActive: true,
     createdAt: new Date('2025-01-01'),

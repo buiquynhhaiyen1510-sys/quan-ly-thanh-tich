@@ -1,6 +1,10 @@
 import { db } from '@/lib/db'
 import { generateYearRange, parseAcademicYear } from '@/lib/skkn'
-import type { ConditionInput } from '@/lib/validations/eligibility-rule'
+import type {
+  ConditionInput,
+  ConditionGroup,
+  EligibilityConditions,
+} from '@/lib/validations/eligibility-rule'
 import type { EligibilityRule } from '@prisma/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -15,10 +19,19 @@ export type ConditionResult = {
   legalNote?: string
 }
 
+export type GroupResult = {
+  groupIndex: number
+  label?: string
+  met: boolean                // all conditions in this group passed
+  conditions: ConditionResult[]
+}
+
 export type TeacherEligibilityResult = {
   teacherId: string
   teacherName: string
-  eligible: boolean
+  eligible: boolean           // true if at least one group passed
+  groups: GroupResult[]       // one per anyOf group
+  // flat conditions list (first group) kept for backward compat with export
   conditions: ConditionResult[]
 }
 
@@ -30,7 +43,17 @@ export type EligibilityCheckResult = {
   ineligible: TeacherEligibilityResult[]
 }
 
-// ── Internal helpers ──────────────────────────────────────────────────────────
+// ── Normalize conditions JSON (backward compat) ───────────────────────────────
+
+function normalizeConditions(raw: unknown): EligibilityConditions {
+  if (Array.isArray(raw)) {
+    // Legacy flat array → single AND group
+    return { anyOf: [{ conditions: raw as ConditionInput[] }] }
+  }
+  return raw as EligibilityConditions
+}
+
+// ── Year helpers ──────────────────────────────────────────────────────────────
 
 function isAcademicYearInConstraint(
   academicYear: string,
@@ -44,8 +67,6 @@ function isAcademicYearInConstraint(
   return validYears.has(academicYear)
 }
 
-// For AWARD (calendar year "YYYY"), map academic year constraint → calendar years.
-// Uses startYear of each academic year in the range.
 function calendarYearsFromConstraint(
   condition: ConditionInput,
   referenceYear: string
@@ -75,6 +96,18 @@ async function checkSKKN(
     where: {
       teacherId,
       ...(condition.statusRequired === 'UNUSED' ? { status: 'UNUSED' } : {}),
+      // Filter by minLevel if specified (SCHOOL < DISTRICT < CITY)
+      ...(condition.minLevel
+        ? {
+            level: {
+              in: condition.minLevel === 'SCHOOL'
+                ? ['SCHOOL', 'DISTRICT', 'CITY']
+                : condition.minLevel === 'DISTRICT'
+                ? ['DISTRICT', 'CITY']
+                : ['CITY'],
+            },
+          }
+        : {}),
     },
     select: { id: true, academicYear: true },
   })
@@ -165,7 +198,13 @@ async function checkTaskResult(
   referenceYear: string
 ): Promise<ConditionResult> {
   const records = await db.yearlyRecord.findMany({
-    where: { teacherId },
+    where: {
+      teacherId,
+      // Filter by specific task results if specified
+      ...(condition.taskResults && condition.taskResults.length > 0
+        ? { taskResult: { in: condition.taskResults } }
+        : {}),
+    },
     select: { academicYear: true },
   })
 
@@ -184,22 +223,14 @@ async function checkTaskResult(
   }
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
-
-export async function checkTeacherEligibility(
+async function evaluateGroup(
   teacherId: string,
-  rule: EligibilityRule,
+  group: ConditionGroup,
+  groupIndex: number,
   referenceYear: string
-): Promise<TeacherEligibilityResult> {
-  const profile = await db.teacherProfile.findUniqueOrThrow({
-    where: { id: teacherId },
-    select: { fullName: true },
-  })
-
-  const conditions = rule.conditions as ConditionInput[]
-
-  const results: ConditionResult[] = await Promise.all(
-    conditions.map((cond, idx) => {
+): Promise<GroupResult> {
+  const condResults: ConditionResult[] = await Promise.all(
+    group.conditions.map((cond, idx) => {
       switch (cond.type) {
         case 'SKKN':
           return checkSKKN(teacherId, cond, idx, referenceYear)
@@ -214,10 +245,43 @@ export async function checkTeacherEligibility(
   )
 
   return {
+    groupIndex,
+    label: group.label,
+    met: condResults.every(r => r.met),
+    conditions: condResults,
+  }
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+export async function checkTeacherEligibility(
+  teacherId: string,
+  rule: EligibilityRule,
+  referenceYear: string
+): Promise<TeacherEligibilityResult> {
+  const profile = await db.teacherProfile.findUniqueOrThrow({
+    where: { id: teacherId },
+    select: { fullName: true },
+  })
+
+  const eligibilityConditions = normalizeConditions(rule.conditions)
+
+  const groups: GroupResult[] = await Promise.all(
+    eligibilityConditions.anyOf.map((group, idx) =>
+      evaluateGroup(teacherId, group, idx, referenceYear)
+    )
+  )
+
+  // Teacher is eligible if ANY group (anyOf) is fully satisfied
+  const eligible = groups.some(g => g.met)
+
+  return {
     teacherId,
     teacherName: profile.fullName,
-    eligible: results.every(r => r.met),
-    conditions: results,
+    eligible,
+    groups,
+    // Flat conditions from first group for backward compat
+    conditions: groups[0]?.conditions ?? [],
   }
 }
 

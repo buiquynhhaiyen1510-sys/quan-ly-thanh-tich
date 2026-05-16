@@ -1,14 +1,6 @@
 /**
  * prisma/seed.ts — Seed data ban đầu (Trường Tiểu học)
- *
  * Chạy: npm run db:seed
- *
- * Seed bao gồm:
- *   - 1 Admin user (Hiệu trưởng / cán bộ phụ trách thi đua)
- *   - 2 Teacher users + TeacherProfile (GV tiểu học)
- *   - 2 EligibilityRule mẫu
- *   - Vài SKKN mẫu cho GV1 (đề tài tiểu học)
- *   - Tổ chuyên môn tiểu học
  */
 
 import { PrismaClient, SKKNLevel, SKKNStatus } from '@prisma/client'
@@ -26,6 +18,7 @@ async function main() {
   await prisma.teacherProfile.deleteMany({})
   await prisma.user.deleteMany({})
   await prisma.eligibilityRule.deleteMany({})
+  await prisma.danhHieu.deleteMany({})
   await prisma.department.deleteMany({})
   console.log('  ✓ Đã xóa sạch dữ liệu cũ')
 
@@ -48,7 +41,7 @@ async function main() {
   console.log(`  ✓ Admin: ${admin.email}`)
 
   // ---------------------------------------------------------------------------
-  // 2. Giáo viên 1 — GV chủ nhiệm khối 3, có SKKN
+  // 2. Giáo viên 1
   // ---------------------------------------------------------------------------
   const teacherPassword = await hash('Teacher@123', 12)
 
@@ -79,7 +72,7 @@ async function main() {
   console.log(`  ✓ GV1: ${teacher1User.email} (${teacher1Profile.fullName})`)
 
   // ---------------------------------------------------------------------------
-  // 3. Giáo viên 2 — GV khối 1, chưa có SKKN
+  // 3. Giáo viên 2
   // ---------------------------------------------------------------------------
   const teacher2User = await prisma.user.upsert({
     where: { email: 'gv2@tieuhoc.edu.vn' },
@@ -108,7 +101,7 @@ async function main() {
   console.log(`  ✓ GV2: ${teacher2User.email} (${teacher2Profile.fullName})`)
 
   // ---------------------------------------------------------------------------
-  // 4. SKKN mẫu cho GV1 (đề tài phù hợp tiểu học)
+  // 4. SKKN mẫu cho GV1 (đề tài tiểu học)
   // ---------------------------------------------------------------------------
   const skkn1 = await prisma.sKKN.create({
     data: {
@@ -148,98 +141,132 @@ async function main() {
   console.log(`  ✓ SKKN GV1: ${skkn3.title}`)
 
   // ---------------------------------------------------------------------------
-  // 5. EligibilityRule — "Chiến sĩ thi đua cơ sở"
-  //    Điều kiện: HTTốt hoặc HTXS + 1 SKKN chưa dùng trong 2 năm gần nhất
-  //    Căn cứ: Nghị định 91/2017/NĐ-CP Điều 25
+  // 5. Danh mục danh hiệu (DanhHieu)
+  //    Thay thế enum CompetitionTitleType — Admin có thể CRUD từ /admin/danh-hieu
   // ---------------------------------------------------------------------------
-  const ruleCSTD = await prisma.eligibilityRule.upsert({
-    where: { id: 'rule-cstd-co-so' },
-    update: {},
-    create: {
-      id: 'rule-cstd-co-so',
-      targetTitle: 'Chiến sĩ thi đua cơ sở',
-      isActive: true,
-      conditions: [
-        {
-          type: 'TASK_RESULT',
-          minCount: 1,
-          statusRequired: 'ANY',
-          yearConstraint: { type: 'CURRENT_YEAR' },
-          consumeAfterEval: false,
-          legalNote: 'Hoàn thành tốt nhiệm vụ (HTTốt hoặc HTXS) trong năm xét',
-        },
-        {
-          type: 'SKKN',
-          minCount: 1,
-          statusRequired: 'UNUSED',
-          yearConstraint: { type: 'WITHIN_N_YEARS', n: 2 },
-          consumeAfterEval: true,
-          legalNote:
-            'Cách 2: Có 1 SKKN cấp trường trở lên chưa sử dụng trong 2 năm học gần nhất. Căn cứ: Nghị định 91/2017/NĐ-CP Điều 25',
-        },
-      ],
-    },
-  })
-  console.log(`  ✓ EligibilityRule: ${ruleCSTD.targetTitle}`)
+  const defaultDanhHieus = [
+    { name: 'Chiến sĩ thi đua cơ sở', description: 'Danh hiệu thi đua cơ sở hàng năm', order: 0 },
+    { name: 'Giáo viên giỏi', description: 'GV đạt danh hiệu giỏi cấp trường/huyện/tỉnh', order: 1 },
+    { name: 'GV chủ nhiệm giỏi', description: 'Giáo viên chủ nhiệm giỏi', order: 2 },
+  ]
+
+  const createdDanhHieus: { id: string; name: string }[] = []
+  for (const dh of defaultDanhHieus) {
+    const item = await prisma.danhHieu.create({
+      data: { ...dh, isActive: true },
+    })
+    createdDanhHieus.push({ id: item.id, name: item.name })
+  }
+  console.log(`  ✓ ${createdDanhHieus.length} danh hiệu mẫu`)
+
+  const cstdDanhHieu = createdDanhHieus.find(d => d.name === 'Chiến sĩ thi đua cơ sở')!
 
   // ---------------------------------------------------------------------------
-  // 6. EligibilityRule — "Bằng khen UBND Thành phố"
-  //    Điều kiện: 2 SKKN chưa dùng trong 2 năm + đạt CSTĐCS hoặc GV Giỏi 2 năm liền
-  //    Căn cứ: Nghị định 91/2017/NĐ-CP Điều 72, Thông tư 12/2019/TT-BNV
+  // 6. EligibilityRule — "Chiến sĩ thi đua cơ sở"
+  //    Conditions: anyOf format (OR giữa các nhóm, AND trong mỗi nhóm)
+  //    Cách 1: HTXS
+  //    Cách 2: HTTốt + 1 SKKN cấp trường trở lên chưa dùng trong 2 năm gần nhất
   // ---------------------------------------------------------------------------
-  const ruleBangKhen = await prisma.eligibilityRule.upsert({
-    where: { id: 'rule-bang-khen-ubnd-tp' },
-    update: {},
-    create: {
+  const ruleCSTD = await prisma.eligibilityRule.create({
+    data: {
+      id: 'rule-cstd-co-so',
+      danhHieuId: cstdDanhHieu.id,
+      targetTitle: 'Chiến sĩ thi đua cơ sở',
+      isActive: true,
+      conditions: {
+        anyOf: [
+          {
+            label: 'Cách 1 — Hoàn thành xuất sắc',
+            conditions: [
+              {
+                type: 'TASK_RESULT',
+                minCount: 1,
+                statusRequired: 'ANY',
+                taskResults: ['EXCELLENT'],
+                yearConstraint: { type: 'CURRENT_YEAR' },
+                consumeAfterEval: false,
+                legalNote: 'Hoàn thành xuất sắc nhiệm vụ trong năm xét. Nghị định 91/2017/NĐ-CP Điều 25',
+              },
+            ],
+          },
+          {
+            label: 'Cách 2 — HTTốt + SKKN',
+            conditions: [
+              {
+                type: 'TASK_RESULT',
+                minCount: 1,
+                statusRequired: 'ANY',
+                taskResults: ['GOOD', 'EXCELLENT'],
+                yearConstraint: { type: 'CURRENT_YEAR' },
+                consumeAfterEval: false,
+                legalNote: 'Hoàn thành tốt nhiệm vụ trong năm xét',
+              },
+              {
+                type: 'SKKN',
+                minCount: 1,
+                statusRequired: 'UNUSED',
+                minLevel: 'SCHOOL',
+                yearConstraint: { type: 'WITHIN_N_YEARS', n: 2 },
+                consumeAfterEval: true,
+                legalNote: 'Có 1 SKKN cấp trường trở lên chưa sử dụng trong 2 năm học gần nhất. Nghị định 91/2017/NĐ-CP Điều 25',
+              },
+            ],
+          },
+        ],
+      },
+    },
+  })
+  console.log(`  ✓ EligibilityRule: ${ruleCSTD.targetTitle} (2 cách)`)
+
+  // ---------------------------------------------------------------------------
+  // 7. EligibilityRule — "Bằng khen UBND Thành phố"
+  //    Conditions: 2 SKKN cấp trường trở lên chưa dùng + đạt CSTĐCS 2 năm
+  // ---------------------------------------------------------------------------
+  const ruleBangKhen = await prisma.eligibilityRule.create({
+    data: {
       id: 'rule-bang-khen-ubnd-tp',
+      danhHieuId: null,
       targetTitle: 'Bằng khen UBND Thành phố',
       isActive: true,
-      conditions: [
-        {
-          type: 'SKKN',
-          minCount: 2,
-          statusRequired: 'UNUSED',
-          yearConstraint: { type: 'WITHIN_N_YEARS', n: 2 },
-          consumeAfterEval: true,
-          legalNote:
-            'Phải có 2 SKKN cấp trường trở lên chưa sử dụng trong 2 năm học liền kề. Căn cứ: Nghị định 91/2017/NĐ-CP Điều 72, Thông tư 12/2019/TT-BNV',
-        },
-        {
-          type: 'COMPETITION_TITLE',
-          minCount: 2,
-          statusRequired: 'ANY',
-          yearConstraint: { type: 'WITHIN_N_YEARS', n: 2 },
-          consumeAfterEval: false,
-          legalNote:
-            'Đạt danh hiệu Chiến sĩ thi đua cơ sở hoặc GV Giỏi ít nhất 2 năm trong 2 năm liền kề',
-        },
-      ],
+      conditions: {
+        anyOf: [
+          {
+            label: 'Điều kiện đầy đủ',
+            conditions: [
+              {
+                type: 'SKKN',
+                minCount: 2,
+                statusRequired: 'UNUSED',
+                minLevel: 'SCHOOL',
+                yearConstraint: { type: 'WITHIN_N_YEARS', n: 2 },
+                consumeAfterEval: true,
+                legalNote: 'Phải có 2 SKKN cấp trường trở lên chưa sử dụng trong 2 năm. Nghị định 91/2017/NĐ-CP Điều 72',
+              },
+              {
+                type: 'COMPETITION_TITLE',
+                minCount: 2,
+                statusRequired: 'ANY',
+                yearConstraint: { type: 'WITHIN_N_YEARS', n: 2 },
+                consumeAfterEval: false,
+                legalNote: 'Đạt CSTĐCS hoặc GV Giỏi ít nhất 2 năm trong 2 năm liền kề',
+              },
+            ],
+          },
+        ],
+      },
     },
   })
   console.log(`  ✓ EligibilityRule: ${ruleBangKhen.targetTitle}`)
 
   // ---------------------------------------------------------------------------
-  // 7. Tổ chuyên môn tiểu học
-  //    Tiểu học thường tổ chức theo khối lớp hoặc theo môn chuyên biệt
+  // 8. Tổ chuyên môn tiểu học
   // ---------------------------------------------------------------------------
   const defaultDepartments = [
-    'Tổ 1',          // Khối lớp 1
-    'Tổ 2',          // Khối lớp 2
-    'Tổ 3',          // Khối lớp 3
-    'Tổ 4',          // Khối lớp 4
-    'Tổ 5',          // Khối lớp 5
-    'Tổ Anh văn',    // Giáo viên Tiếng Anh toàn trường
-    'Tổ Tin học',    // Giáo viên Tin học
-    'Tổ Âm nhạc - Mỹ thuật',  // Môn nghệ thuật
-    'Tổ Thể dục',    // Giáo viên Thể dục
-    'Tổ Văn phòng',  // Hành chính, kế toán
+    'Tổ 1', 'Tổ 2', 'Tổ 3', 'Tổ 4', 'Tổ 5',
+    'Tổ Anh văn', 'Tổ Tin học', 'Tổ Âm nhạc - Mỹ thuật', 'Tổ Thể dục', 'Tổ Văn phòng',
   ]
   for (let i = 0; i < defaultDepartments.length; i++) {
-    await prisma.department.upsert({
-      where: { name: defaultDepartments[i] },
-      update: {},
-      create: { name: defaultDepartments[i], order: i },
-    })
+    await prisma.department.create({ data: { name: defaultDepartments[i], order: i } })
   }
   console.log(`  ✓ ${defaultDepartments.length} tổ chuyên môn tiểu học`)
 
@@ -248,6 +275,10 @@ async function main() {
   console.log('  Admin:  admin@tieuhoc.edu.vn  /  Admin@123')
   console.log('  GV1:    gv1@tieuhoc.edu.vn    /  Teacher@123  (Nguyễn Thị Hoa — Tổ 3)')
   console.log('  GV2:    gv2@tieuhoc.edu.vn    /  Teacher@123  (Trần Thị Mai — Tổ 1)')
+  console.log('\nDanh mục danh hiệu:')
+  for (const dh of createdDanhHieus) {
+    console.log(`  - ${dh.name}`)
+  }
 }
 
 main()

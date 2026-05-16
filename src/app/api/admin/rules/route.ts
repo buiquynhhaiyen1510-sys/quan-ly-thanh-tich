@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
   const rule = await db.eligibilityRule.create({
     data: {
       targetTitle: parsed.data.targetTitle,
+      danhHieuId: parsed.data.danhHieuId ?? null,
       conditions: parsed.data.conditions,
       isActive: parsed.data.isActive,
     },

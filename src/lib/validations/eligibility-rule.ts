@@ -13,22 +13,44 @@ export const conditionSchema = z.object({
   yearConstraint: yearConstraintSchema,
   consumeAfterEval: z.boolean(),
   legalNote: z.string().optional(),
+  // TASK_RESULT: filter by specific results (empty = any result counts)
+  taskResults: z.array(z.enum(['GOOD', 'EXCELLENT'])).optional(),
+  // SKKN: minimum level required
+  minLevel: z.enum(['SCHOOL', 'DISTRICT', 'CITY']).optional(),
 })
 
-export const conditionsSchema = z.array(conditionSchema).min(1, 'Cần ít nhất 1 điều kiện')
+export const conditionGroupSchema = z.object({
+  label: z.string().optional(), // "Cách 1", "Cách 2"
+  conditions: z.array(conditionSchema).min(1, 'Mỗi nhóm cần ít nhất 1 điều kiện'),
+})
+
+// New format: anyOf = OR between groups, AND within each group
+export const eligibilityConditionsSchema = z.object({
+  anyOf: z.array(conditionGroupSchema).min(1, 'Cần ít nhất 1 nhóm điều kiện'),
+})
+
+// Accept either new format or legacy flat array (will be normalized by engine)
+const conditionsInputSchema = z.union([
+  eligibilityConditionsSchema,
+  z.array(conditionSchema).min(1), // legacy: flat array = single AND group
+])
 
 export const createRuleSchema = z.object({
   targetTitle: z.string().min(2, 'Tên danh hiệu quá ngắn'),
-  conditions: conditionsSchema,
+  danhHieuId: z.string().optional(),
+  conditions: conditionsInputSchema,
   isActive: z.boolean().default(true),
 })
 
 export const updateRuleSchema = z.object({
   targetTitle: z.string().min(2).optional(),
-  conditions: conditionsSchema.optional(),
+  danhHieuId: z.string().nullable().optional(),
+  conditions: conditionsInputSchema.optional(),
   isActive: z.boolean().optional(),
 })
 
 export type CreateRuleInput = z.infer<typeof createRuleSchema>
 export type UpdateRuleInput = z.infer<typeof updateRuleSchema>
 export type ConditionInput = z.infer<typeof conditionSchema>
+export type ConditionGroup = z.infer<typeof conditionGroupSchema>
+export type EligibilityConditions = z.infer<typeof eligibilityConditionsSchema>

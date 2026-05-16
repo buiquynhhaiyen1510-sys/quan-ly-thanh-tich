@@ -41,6 +41,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     where: { id: params.id },
     data: {
       ...(parsed.data.targetTitle !== undefined && { targetTitle: parsed.data.targetTitle }),
+      ...(parsed.data.danhHieuId !== undefined && { danhHieuId: parsed.data.danhHieuId }),
       ...(parsed.data.conditions !== undefined && { conditions: parsed.data.conditions }),
       ...(parsed.data.isActive !== undefined && { isActive: parsed.data.isActive }),
     },
