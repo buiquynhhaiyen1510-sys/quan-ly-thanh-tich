@@ -1,14 +1,14 @@
 /**
- * prisma/seed.ts — Seed data ban đầu
+ * prisma/seed.ts — Seed data ban đầu (Trường Tiểu học)
  *
- * Chạy: npx prisma db seed
- * Hoặc: ts-node --compiler-options '{"module":"CommonJS"}' prisma/seed.ts
+ * Chạy: npm run db:seed
  *
  * Seed bao gồm:
- *   - 1 Admin user
- *   - 2 Teacher users + TeacherProfile
+ *   - 1 Admin user (Hiệu trưởng / cán bộ phụ trách thi đua)
+ *   - 2 Teacher users + TeacherProfile (GV tiểu học)
  *   - 2 EligibilityRule mẫu
- *   - Vài SKKN mẫu cho GV1
+ *   - Vài SKKN mẫu cho GV1 (đề tài tiểu học)
+ *   - Tổ chuyên môn tiểu học
  */
 
 import { PrismaClient, SKKNLevel, SKKNStatus } from '@prisma/client'
@@ -17,6 +17,18 @@ import { hash } from 'bcryptjs'
 const prisma = new PrismaClient()
 
 async function main() {
+  console.log('🧹 Xóa dữ liệu cũ...')
+  await prisma.awardSKKN.deleteMany({})
+  await prisma.competitionTitle.deleteMany({})
+  await prisma.award.deleteMany({})
+  await prisma.sKKN.deleteMany({})
+  await prisma.yearlyRecord.deleteMany({})
+  await prisma.teacherProfile.deleteMany({})
+  await prisma.user.deleteMany({})
+  await prisma.eligibilityRule.deleteMany({})
+  await prisma.department.deleteMany({})
+  console.log('  ✓ Đã xóa sạch dữ liệu cũ')
+
   console.log('🌱 Bắt đầu seed data...')
 
   // ---------------------------------------------------------------------------
@@ -24,10 +36,10 @@ async function main() {
   // ---------------------------------------------------------------------------
   const adminPassword = await hash('Admin@123', 12)
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@school.edu.vn' },
+    where: { email: 'admin@tieuhoc.edu.vn' },
     update: {},
     create: {
-      email: 'admin@school.edu.vn',
+      email: 'admin@tieuhoc.edu.vn',
       passwordHash: adminPassword,
       role: 'ADMIN',
       isActive: true,
@@ -36,15 +48,15 @@ async function main() {
   console.log(`  ✓ Admin: ${admin.email}`)
 
   // ---------------------------------------------------------------------------
-  // 2. Teacher 1
+  // 2. Giáo viên 1 — GV chủ nhiệm khối 3, có SKKN
   // ---------------------------------------------------------------------------
   const teacherPassword = await hash('Teacher@123', 12)
 
   const teacher1User = await prisma.user.upsert({
-    where: { email: 'gv1@school.edu.vn' },
+    where: { email: 'gv1@tieuhoc.edu.vn' },
     update: {},
     create: {
-      email: 'gv1@school.edu.vn',
+      email: 'gv1@tieuhoc.edu.vn',
       passwordHash: teacherPassword,
       role: 'TEACHER',
       isActive: true,
@@ -56,24 +68,24 @@ async function main() {
     update: {},
     create: {
       userId: teacher1User.id,
-      fullName: 'Nguyễn Thị Lan',
-      dateOfBirth: new Date('1985-03-15'),
-      department: 'Tổ Toán - Tin',
-      teachingSince: 2008,
+      fullName: 'Nguyễn Thị Hoa',
+      dateOfBirth: new Date('1988-04-20'),
+      department: 'Tổ 3',
+      teachingSince: 2010,
       isPartyMember: true,
-      partyJoinDate: new Date('2012-06-15'),
+      partyJoinDate: new Date('2015-02-03'),
     },
   })
   console.log(`  ✓ GV1: ${teacher1User.email} (${teacher1Profile.fullName})`)
 
   // ---------------------------------------------------------------------------
-  // 3. Teacher 2
+  // 3. Giáo viên 2 — GV khối 1, chưa có SKKN
   // ---------------------------------------------------------------------------
   const teacher2User = await prisma.user.upsert({
-    where: { email: 'gv2@school.edu.vn' },
+    where: { email: 'gv2@tieuhoc.edu.vn' },
     update: {},
     create: {
-      email: 'gv2@school.edu.vn',
+      email: 'gv2@tieuhoc.edu.vn',
       passwordHash: teacherPassword,
       role: 'TEACHER',
       isActive: true,
@@ -85,10 +97,10 @@ async function main() {
     update: {},
     create: {
       userId: teacher2User.id,
-      fullName: 'Trần Văn Minh',
-      dateOfBirth: new Date('1990-07-22'),
-      department: 'Tổ Ngữ văn - Tiếng Anh',
-      teachingSince: 2014,
+      fullName: 'Trần Thị Mai',
+      dateOfBirth: new Date('1995-09-12'),
+      department: 'Tổ 1',
+      teachingSince: 2018,
       isPartyMember: false,
       partyJoinDate: null,
     },
@@ -96,12 +108,12 @@ async function main() {
   console.log(`  ✓ GV2: ${teacher2User.email} (${teacher2Profile.fullName})`)
 
   // ---------------------------------------------------------------------------
-  // 4. SKKN mẫu cho GV1
+  // 4. SKKN mẫu cho GV1 (đề tài phù hợp tiểu học)
   // ---------------------------------------------------------------------------
   const skkn1 = await prisma.sKKN.create({
     data: {
       teacherId: teacher1Profile.id,
-      title: 'Ứng dụng GeoGebra trong dạy học Hình học lớp 10',
+      title: 'Một số biện pháp rèn kỹ năng đọc hiểu cho học sinh lớp 3',
       level: SKKNLevel.SCHOOL,
       rating: 'Tốt',
       academicYear: '2022-2023',
@@ -112,7 +124,7 @@ async function main() {
   const skkn2 = await prisma.sKKN.create({
     data: {
       teacherId: teacher1Profile.id,
-      title: 'Phương pháp dạy học phân hóa trong môn Toán THPT',
+      title: 'Ứng dụng trò chơi học tập trong dạy Toán lớp 3',
       level: SKKNLevel.DISTRICT,
       rating: 'Xuất sắc',
       academicYear: '2023-2024',
@@ -123,7 +135,7 @@ async function main() {
   const skkn3 = await prisma.sKKN.create({
     data: {
       teacherId: teacher1Profile.id,
-      title: 'Tích hợp tư duy lập trình vào giảng dạy Toán học',
+      title: 'Phương pháp giúp học sinh lớp 3 học tốt bảng nhân qua trò chơi',
       level: SKKNLevel.SCHOOL,
       rating: 'Khá',
       academicYear: '2024-2025',
@@ -136,12 +148,9 @@ async function main() {
   console.log(`  ✓ SKKN GV1: ${skkn3.title}`)
 
   // ---------------------------------------------------------------------------
-  // 5. EligibilityRule — "Chiến sĩ thi đua cơ sở" (CSTĐCS)
-  //
-  // Điều kiện: Hoàn thành tốt nhiệm vụ (HTXS hoặc HTTốt — tức TaskResult
-  // EXCELLENT hoặc GOOD) + ít nhất 1 SKKN chưa dùng trong 2 năm gần nhất.
-  // Áp dụng Cách 2 (METHOD_2).
-  // Căn cứ pháp lý: Nghị định 91/2017/NĐ-CP.
+  // 5. EligibilityRule — "Chiến sĩ thi đua cơ sở"
+  //    Điều kiện: HTTốt hoặc HTXS + 1 SKKN chưa dùng trong 2 năm gần nhất
+  //    Căn cứ: Nghị định 91/2017/NĐ-CP Điều 25
   // ---------------------------------------------------------------------------
   const ruleCSTD = await prisma.eligibilityRule.upsert({
     where: { id: 'rule-cstd-co-so' },
@@ -157,7 +166,7 @@ async function main() {
           statusRequired: 'ANY',
           yearConstraint: { type: 'CURRENT_YEAR' },
           consumeAfterEval: false,
-          legalNote: 'Hoàn thành tốt nhiệm vụ (GOOD hoặc EXCELLENT) trong năm xét',
+          legalNote: 'Hoàn thành tốt nhiệm vụ (HTTốt hoặc HTXS) trong năm xét',
         },
         {
           type: 'SKKN',
@@ -175,10 +184,8 @@ async function main() {
 
   // ---------------------------------------------------------------------------
   // 6. EligibilityRule — "Bằng khen UBND Thành phố"
-  //
-  // Điều kiện: Có 2 SKKN chưa dùng trong 2 năm liền kề (năm xét và năm
-  // trước), consumeAfterEval = true (SKKN bị đánh dấu USED sau khi xét).
-  // Căn cứ pháp lý: Nghị định 91/2017/NĐ-CP, Thông tư 12/2019/TT-BNV.
+  //    Điều kiện: 2 SKKN chưa dùng trong 2 năm + đạt CSTĐCS hoặc GV Giỏi 2 năm liền
+  //    Căn cứ: Nghị định 91/2017/NĐ-CP Điều 72, Thông tư 12/2019/TT-BNV
   // ---------------------------------------------------------------------------
   const ruleBangKhen = await prisma.eligibilityRule.upsert({
     where: { id: 'rule-bang-khen-ubnd-tp' },
@@ -212,11 +219,20 @@ async function main() {
   console.log(`  ✓ EligibilityRule: ${ruleBangKhen.targetTitle}`)
 
   // ---------------------------------------------------------------------------
-  // 7. Default Departments
+  // 7. Tổ chuyên môn tiểu học
+  //    Tiểu học thường tổ chức theo khối lớp hoặc theo môn chuyên biệt
   // ---------------------------------------------------------------------------
   const defaultDepartments = [
-    'Toán', 'Văn', 'Anh', 'Lý', 'Hóa', 'Sinh', 'Sử', 'Địa',
-    'GDCD', 'Thể dục', 'Tin học', 'Công nghệ', 'Âm nhạc', 'Mỹ thuật',
+    'Tổ 1',          // Khối lớp 1
+    'Tổ 2',          // Khối lớp 2
+    'Tổ 3',          // Khối lớp 3
+    'Tổ 4',          // Khối lớp 4
+    'Tổ 5',          // Khối lớp 5
+    'Tổ Anh văn',    // Giáo viên Tiếng Anh toàn trường
+    'Tổ Tin học',    // Giáo viên Tin học
+    'Tổ Âm nhạc - Mỹ thuật',  // Môn nghệ thuật
+    'Tổ Thể dục',    // Giáo viên Thể dục
+    'Tổ Văn phòng',  // Hành chính, kế toán
   ]
   for (let i = 0; i < defaultDepartments.length; i++) {
     await prisma.department.upsert({
@@ -225,13 +241,13 @@ async function main() {
       create: { name: defaultDepartments[i], order: i },
     })
   }
-  console.log(`  ✓ ${defaultDepartments.length} tổ chuyên môn mặc định`)
+  console.log(`  ✓ ${defaultDepartments.length} tổ chuyên môn tiểu học`)
 
   console.log('\n✅ Seed hoàn tất!')
   console.log('\nTài khoản mặc định:')
-  console.log('  Admin:    admin@school.edu.vn  /  Admin@123')
-  console.log('  GV1:      gv1@school.edu.vn    /  Teacher@123')
-  console.log('  GV2:      gv2@school.edu.vn    /  Teacher@123')
+  console.log('  Admin:  admin@tieuhoc.edu.vn  /  Admin@123')
+  console.log('  GV1:    gv1@tieuhoc.edu.vn    /  Teacher@123  (Nguyễn Thị Hoa — Tổ 3)')
+  console.log('  GV2:    gv2@tieuhoc.edu.vn    /  Teacher@123  (Trần Thị Mai — Tổ 1)')
 }
 
 main()
