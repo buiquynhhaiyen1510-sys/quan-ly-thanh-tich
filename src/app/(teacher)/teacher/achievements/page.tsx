@@ -20,7 +20,7 @@ interface CompetitionTitle {
 interface YearlyRecord {
   id: string
   academicYear: string
-  taskResult: 'GOOD' | 'EXCELLENT'
+  taskResult: 'NOT_COMPLETED' | 'GOOD' | 'EXCELLENT'
   partyRating: 'GOOD' | 'EXCELLENT' | null
   competitionTitles: CompetitionTitle[]
 }
@@ -62,8 +62,7 @@ interface AvailableSKKN {
 function currentAcademicYear(): string {
   const now = new Date()
   const y = now.getFullYear()
-  const m = now.getMonth() + 1 // 1-based
-  // Academic year starts in September
+  const m = now.getMonth() + 1
   return m >= 9 ? `${y}-${y + 1}` : `${y - 1}-${y}`
 }
 
@@ -79,14 +78,12 @@ function generateYears(): string[] {
 
 const LEVEL_LABELS: Record<string, string> = {
   SCHOOL: 'Cấp trường',
-  DISTRICT: 'Cấp huyện',
+  DISTRICT: 'Cấp phường',
   CITY: 'Cấp tỉnh/TP',
 }
 
-const SKKN_LEVEL_LABELS: Record<string, string> = {
-  SCHOOL: 'Cấp trường',
-  DISTRICT: 'Cấp huyện/quận',
-  CITY: 'Cấp tỉnh/TP',
+function isCSTD(name: string): boolean {
+  return name.toLowerCase().includes('chiến sĩ thi đua')
 }
 
 // --- Main component ---
@@ -101,6 +98,7 @@ export default function AchievementsPage() {
   }>({ yearlyRecords: [], skkns: [], awards: [] })
 
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [danhHieus, setDanhHieus] = useState<DanhHieu[]>([])
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
@@ -109,8 +107,9 @@ export default function AchievementsPage() {
     setTimeout(() => setNotification(null), 4000)
   }
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true)
+  const fetchAll = useCallback(async (isFirstLoad = false) => {
+    if (isFirstLoad) setLoading(true)
+    else setRefreshing(true)
     try {
       const [achRes, dhRes] = await Promise.all([
         fetch('/api/teacher/achievements'),
@@ -127,22 +126,23 @@ export default function AchievementsPage() {
       showNotification('error', 'Không thể tải dữ liệu thành tích')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }, [])
 
-  useEffect(() => { fetchAll() }, [fetchAll])
+  useEffect(() => { fetchAll(true) }, [fetchAll])
 
   // Derived: data for selected year
   const yearRecord = allData.yearlyRecords.find(r => r.academicYear === selectedYear) ?? null
   const yearSkkns = allData.skkns.filter(s => s.academicYear === selectedYear)
-  // Awards use calendar year — we show awards from both years in the range
   const [startY, endY] = selectedYear.split('-')
   const yearAwards = allData.awards.filter(a => a.year === startY || a.year === endY)
 
   // --- Yearly record form ---
-  const [taskResult, setTaskResult] = useState<'GOOD' | 'EXCELLENT'>('GOOD')
+  const [taskResult, setTaskResult] = useState<'NOT_COMPLETED' | 'GOOD' | 'EXCELLENT'>('GOOD')
   const [partyRating, setPartyRating] = useState<'' | 'GOOD' | 'EXCELLENT'>('')
   const [savingRecord, setSavingRecord] = useState(false)
+  const [savingParty, setSavingParty] = useState(false)
 
   useEffect(() => {
     if (yearRecord) {
@@ -154,24 +154,28 @@ export default function AchievementsPage() {
     }
   }, [yearRecord, selectedYear])
 
-  async function handleSaveRecord() {
+  async function saveYearlyRecord(fields: { taskResult: 'NOT_COMPLETED' | 'GOOD' | 'EXCELLENT'; partyRating: '' | 'GOOD' | 'EXCELLENT' }) {
+    const res = await fetch('/api/teacher/yearly-record', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        academicYear: selectedYear,
+        taskResult: fields.taskResult,
+        partyRating: fields.partyRating || null,
+      }),
+    })
+    if (!res.ok) {
+      const d = await res.json()
+      throw new Error(d?.error ?? 'Lưu thất bại')
+    }
+  }
+
+  async function handleSaveTaskResult() {
     setSavingRecord(true)
     try {
-      const res = await fetch('/api/teacher/yearly-record', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          academicYear: selectedYear,
-          taskResult,
-          partyRating: partyRating || null,
-        }),
-      })
-      if (!res.ok) {
-        const d = await res.json()
-        throw new Error(d?.error ?? 'Lưu thất bại')
-      }
+      await saveYearlyRecord({ taskResult, partyRating })
       await fetchAll()
-      showNotification('success', 'Đã lưu kết quả năm học')
+      showNotification('success', 'Đã lưu kết quả nhiệm vụ')
     } catch (err) {
       showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
     } finally {
@@ -179,11 +183,34 @@ export default function AchievementsPage() {
     }
   }
 
+  async function handleSavePartyRating() {
+    setSavingParty(true)
+    try {
+      await saveYearlyRecord({ taskResult, partyRating })
+      await fetchAll()
+      showNotification('success', 'Đã lưu xếp loại đảng viên')
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    } finally {
+      setSavingParty(false)
+    }
+  }
+
   // --- Competition title form ---
   const [titleDanhHieuId, setTitleDanhHieuId] = useState('')
-  const [titleLevel, setTitleLevel] = useState<'SCHOOL' | 'DISTRICT' | 'CITY'>('SCHOOL')
+  const [titleLevel, setTitleLevel] = useState<'SCHOOL' | 'DISTRICT' | 'CITY'>('DISTRICT')
   const [titleMethod, setTitleMethod] = useState<'METHOD_1' | 'METHOD_2' | ''>('')
   const [addingTitle, setAddingTitle] = useState(false)
+
+  const selectedDanhHieu = danhHieus.find(d => d.id === titleDanhHieuId)
+  const isCSTDSelected = selectedDanhHieu ? isCSTD(selectedDanhHieu.name) : false
+
+  // Auto-adjust level when CSTD selected and SCHOOL is the current level
+  useEffect(() => {
+    if (isCSTDSelected && titleLevel === 'SCHOOL') {
+      setTitleLevel('DISTRICT')
+    }
+  }, [isCSTDSelected, titleLevel])
 
   // --- SKKN-consume modal (for METHOD_2) ---
   const [skknModalOpen, setSkknModalOpen] = useState(false)
@@ -271,7 +298,7 @@ export default function AchievementsPage() {
 
   async function handleAddTitle() {
     if (!yearRecord) {
-      showNotification('error', 'Cần lưu kết quả năm học trước')
+      showNotification('error', 'Cần lưu kết quả nhiệm vụ trước')
       return
     }
     if (!titleDanhHieuId) {
@@ -291,7 +318,7 @@ export default function AchievementsPage() {
         body: JSON.stringify({
           yearlyRecordId: yearRecord.id,
           danhHieuId: titleDanhHieuId,
-          level: titleLevel,
+          level: isCSTDSelected ? null : (titleLevel || null),
           achievementMethod: titleMethod || null,
         }),
       })
@@ -440,16 +467,19 @@ export default function AchievementsPage() {
           <h2 className="text-2xl font-bold text-gray-900">Thành tích</h2>
           <p className="text-sm text-gray-500 mt-1">Nhập và quản lý thành tích theo năm học</p>
         </div>
-        <select
-          value={selectedYear}
-          onChange={e => setSelectedYear(e.target.value)}
-          className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          data-testid="year-selector"
-        >
-          {years.map(y => (
-            <option key={y} value={y}>Năm học {y}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-3">
+          {refreshing && <span className="text-xs text-gray-400">Đang cập nhật...</span>}
+          <select
+            value={selectedYear}
+            onChange={e => setSelectedYear(e.target.value)}
+            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            data-testid="year-selector"
+          >
+            {years.map(y => (
+              <option key={y} value={y}>Năm học {y}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {notification && (
@@ -470,39 +500,23 @@ export default function AchievementsPage() {
         <h3 className="text-base font-semibold text-gray-900 mb-4">
           Kết quả nhiệm vụ năm học {selectedYear}
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Hoàn thành nhiệm vụ <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={taskResult}
-              onChange={e => setTaskResult(e.target.value as 'GOOD' | 'EXCELLENT')}
-              data-testid="select-taskResult"
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="GOOD">Hoàn thành tốt (HTTốt)</option>
-              <option value="EXCELLENT">Hoàn thành xuất sắc (HTXS)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Xếp loại đảng viên
-            </label>
-            <select
-              value={partyRating}
-              onChange={e => setPartyRating(e.target.value as '' | 'GOOD' | 'EXCELLENT')}
-              data-testid="select-partyRating"
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">Không phải đảng viên</option>
-              <option value="GOOD">Đảng viên hoàn thành tốt</option>
-              <option value="EXCELLENT">Đảng viên hoàn thành xuất sắc</option>
-            </select>
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Hoàn thành nhiệm vụ <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={taskResult}
+            onChange={e => setTaskResult(e.target.value as typeof taskResult)}
+            data-testid="select-taskResult"
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            <option value="NOT_COMPLETED">Chưa hoàn thành</option>
+            <option value="GOOD">Hoàn thành tốt (HTTốt)</option>
+            <option value="EXCELLENT">Hoàn thành xuất sắc (HTXS)</option>
+          </select>
         </div>
         <button
-          onClick={handleSaveRecord}
+          onClick={handleSaveTaskResult}
           disabled={savingRecord}
           data-testid="btn-save-record"
           className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium transition-colors"
@@ -511,92 +525,37 @@ export default function AchievementsPage() {
         </button>
       </section>
 
-      {/* ── 2. DANH HIỆU THI ĐUA ── */}
+      {/* ── 2. XẾP LOẠI ĐẢNG VIÊN ── */}
       <section className="bg-white rounded-lg border border-gray-200 p-5">
-        <h3 className="text-base font-semibold text-gray-900 mb-4">Danh hiệu thi đua</h3>
-
-        {yearRecord && yearRecord.competitionTitles.length > 0 && (
-          <div className="mb-4 divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
-            {yearRecord.competitionTitles.map(t => (
-              <div key={t.id} className="flex items-center justify-between px-4 py-2.5">
-                <div className="text-sm text-gray-800">
-                  <span className="font-medium">
-                    {t.danhHieu?.name ?? danhHieus.find(d => d.id === t.danhHieuId)?.name ?? t.danhHieuId}
-                  </span>
-                  {t.level && <span className="text-gray-500"> — {LEVEL_LABELS[t.level]}</span>}
-                  {t.achievementMethod && (
-                    <span className="text-gray-400 text-xs ml-1">({t.achievementMethod === 'METHOD_1' ? 'Cách 1' : 'Cách 2'})</span>
-                  )}
-                </div>
-                <button
-                  onClick={() => handleDeleteTitle(t.id)}
-                  className="text-xs text-red-600 hover:text-red-700 hover:underline"
-                >
-                  Xóa
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {!yearRecord && (
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-4 py-2 mb-4">
-            Cần lưu kết quả nhiệm vụ trước khi thêm danh hiệu
-          </p>
-        )}
-
-        <div className="flex flex-wrap gap-3 items-end">
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Loại danh hiệu</label>
-            {danhHieus.length === 0 ? (
-              <p className="text-xs text-gray-400 italic py-2">Admin chưa tạo danh mục danh hiệu</p>
-            ) : (
-              <select
-                value={titleDanhHieuId}
-                onChange={e => setTitleDanhHieuId(e.target.value)}
-                data-testid="select-titleType"
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="">-- Chọn danh hiệu --</option>
-                {danhHieus.map(d => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Cấp</label>
-            <select
-              value={titleLevel}
-              onChange={e => setTitleLevel(e.target.value as typeof titleLevel)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="SCHOOL">Cấp trường</option>
-              <option value="DISTRICT">Cấp huyện</option>
-              <option value="CITY">Cấp tỉnh/TP</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Cách đạt</label>
-            <select
-              value={titleMethod}
-              onChange={e => setTitleMethod(e.target.value as typeof titleMethod)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">Không chọn</option>
-              <option value="METHOD_1">Cách 1</option>
-              <option value="METHOD_2">Cách 2 (có SKKN)</option>
-            </select>
-          </div>
-          <button
-            onClick={handleAddTitle}
-            disabled={addingTitle || !yearRecord}
-            data-testid="btn-add-title"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium transition-colors"
+        <h3 className="text-base font-semibold text-gray-900 mb-4">
+          Xếp loại đảng viên năm học {selectedYear}
+        </h3>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Xếp loại đảng viên
+          </label>
+          <select
+            value={partyRating}
+            onChange={e => setPartyRating(e.target.value as typeof partyRating)}
+            data-testid="select-partyRating"
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           >
-            {addingTitle ? 'Đang thêm...' : '+ Thêm danh hiệu'}
-          </button>
+            <option value="">Không phải đảng viên</option>
+            <option value="GOOD">Đảng viên hoàn thành tốt</option>
+            <option value="EXCELLENT">Đảng viên hoàn thành xuất sắc</option>
+          </select>
         </div>
+        <button
+          onClick={handleSavePartyRating}
+          disabled={savingParty || !yearRecord}
+          data-testid="btn-save-party"
+          className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium transition-colors"
+        >
+          {savingParty ? 'Đang lưu...' : 'Lưu xếp loại'}
+        </button>
+        {!yearRecord && (
+          <p className="mt-2 text-xs text-amber-600">Cần lưu kết quả nhiệm vụ trước</p>
+        )}
       </section>
 
       {/* ── 3. SKKN ── */}
@@ -612,7 +571,7 @@ export default function AchievementsPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{s.title}</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {SKKN_LEVEL_LABELS[s.level]} · Xếp loại: {s.rating}
+                    {LEVEL_LABELS[s.level]} · Xếp loại: {s.rating}
                     {s.status === 'USED' && (
                       <span className="ml-2 text-amber-600">
                         (Đã dùng cho: {s.usedFor} — {s.usedYear})
@@ -666,7 +625,7 @@ export default function AchievementsPage() {
                 className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="SCHOOL">Cấp trường</option>
-                <option value="DISTRICT">Cấp huyện/quận</option>
+                <option value="DISTRICT">Cấp phường</option>
                 <option value="CITY">Cấp tỉnh/TP</option>
               </select>
             </div>
@@ -693,6 +652,102 @@ export default function AchievementsPage() {
             </div>
           </div>
         </form>
+      </section>
+
+      {/* ── 4. DANH HIỆU THI ĐUA ── */}
+      <section className="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 className="text-base font-semibold text-gray-900 mb-4">Danh hiệu thi đua</h3>
+
+        {yearRecord && yearRecord.competitionTitles.length > 0 && (
+          <div className="mb-4 divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+            {yearRecord.competitionTitles.map(t => (
+              <div key={t.id} className="flex items-center justify-between px-4 py-2.5">
+                <div className="text-sm text-gray-800">
+                  <span className="font-medium">
+                    {t.danhHieu?.name ?? danhHieus.find(d => d.id === t.danhHieuId)?.name ?? t.danhHieuId}
+                  </span>
+                  {t.level && <span className="text-gray-500"> — {LEVEL_LABELS[t.level]}</span>}
+                  {t.achievementMethod && (
+                    <span className="text-gray-400 text-xs ml-1">
+                      ({t.achievementMethod === 'METHOD_1' ? 'Cách 1' : 'Cách 2'})
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleDeleteTitle(t.id)}
+                  className="text-xs text-red-600 hover:text-red-700 hover:underline"
+                >
+                  Xóa
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!yearRecord && (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-4 py-2 mb-4">
+            Cần lưu kết quả nhiệm vụ trước khi thêm danh hiệu
+          </p>
+        )}
+
+        <div className="flex flex-wrap gap-3 items-end">
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Loại danh hiệu</label>
+            {danhHieus.length === 0 ? (
+              <p className="text-xs text-gray-400 italic py-2">Admin chưa tạo danh mục danh hiệu</p>
+            ) : (
+              <select
+                value={titleDanhHieuId}
+                onChange={e => setTitleDanhHieuId(e.target.value)}
+                data-testid="select-titleType"
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">-- Chọn danh hiệu --</option>
+                {danhHieus.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Cấp: ẩn "Cấp trường" cho Chiến sĩ thi đua */}
+          {!isCSTDSelected && (
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Cấp</label>
+              <select
+                value={titleLevel}
+                onChange={e => setTitleLevel(e.target.value as typeof titleLevel)}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="SCHOOL">Cấp trường</option>
+                <option value="DISTRICT">Cấp phường</option>
+                <option value="CITY">Cấp tỉnh/TP</option>
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Cách đạt</label>
+            <select
+              value={titleMethod}
+              onChange={e => setTitleMethod(e.target.value as typeof titleMethod)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">Không chọn</option>
+              <option value="METHOD_1">Cách 1</option>
+              <option value="METHOD_2">Cách 2 (có SKKN)</option>
+            </select>
+          </div>
+
+          <button
+            onClick={handleAddTitle}
+            disabled={addingTitle || !yearRecord || !titleDanhHieuId}
+            data-testid="btn-add-title"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium transition-colors"
+          >
+            {addingTitle ? 'Đang thêm...' : '+ Thêm danh hiệu'}
+          </button>
+        </div>
       </section>
 
       {/* ── SKKN MODAL ── */}
@@ -758,7 +813,7 @@ export default function AchievementsPage() {
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-900 truncate">{s.title}</p>
                                 <p className="text-xs text-gray-500">
-                                  {s.academicYear} · {s.level === 'SCHOOL' ? 'Cấp trường' : s.level === 'DISTRICT' ? 'Cấp huyện' : 'Cấp tỉnh'} · {s.rating}
+                                  {s.academicYear} · {LEVEL_LABELS[s.level] ?? s.level} · {s.rating}
                                 </p>
                               </div>
                             </label>
@@ -797,7 +852,7 @@ export default function AchievementsPage() {
         </div>
       )}
 
-      {/* ── 4. KHEN THƯỞNG ── */}
+      {/* ── 5. KHEN THƯỞNG ── */}
       <section className="bg-white rounded-lg border border-gray-200 p-5">
         <h3 className="text-base font-semibold text-gray-900 mb-4">Khen thưởng</h3>
 

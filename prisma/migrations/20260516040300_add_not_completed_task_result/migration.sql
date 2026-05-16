@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "TaskResult" ADD VALUE 'NOT_COMPLETED';

@@ -24,6 +24,7 @@ enum Role {
 }
 
 enum TaskResult {
+  NOT_COMPLETED
   GOOD
   EXCELLENT
 }

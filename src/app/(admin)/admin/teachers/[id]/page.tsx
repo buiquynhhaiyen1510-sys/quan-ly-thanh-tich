@@ -46,10 +46,10 @@ const TITLE_LABELS: Record<string, string> = {
 }
 const LEVEL_LABELS: Record<string, string> = {
   SCHOOL: 'Cấp trường',
-  DISTRICT: 'Cấp huyện',
+  DISTRICT: 'Cấp phường',
   CITY: 'Cấp tỉnh/TP',
 }
-const TASK_LABELS: Record<string, string> = { GOOD: 'HTTốt', EXCELLENT: 'HTXS' }
+const TASK_LABELS: Record<string, string> = { NOT_COMPLETED: 'Chưa hoàn thành', GOOD: 'HTTốt', EXCELLENT: 'HTXS' }
 
 interface Department {
   id: string

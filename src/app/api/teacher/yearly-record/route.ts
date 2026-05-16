@@ -5,7 +5,7 @@ import { requireTeacher } from '@/lib/api-helpers'
 
 const schema = z.object({
   academicYear: z.string().regex(/^\d{4}-\d{4}$/, 'Format: 2024-2025'),
-  taskResult: z.enum(['GOOD', 'EXCELLENT']),
+  taskResult: z.enum(['NOT_COMPLETED', 'GOOD', 'EXCELLENT']),
   partyRating: z.enum(['GOOD', 'EXCELLENT']).nullable().optional(),
 })
 

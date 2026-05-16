@@ -9,7 +9,7 @@ export async function GET() {
 
   const yearlyRecords = await db.yearlyRecord.findMany({
     where: { teacherId: teacherProfile.id },
-    include: { competitionTitles: true },
+    include: { competitionTitles: { include: { danhHieu: true } } },
     orderBy: { academicYear: 'desc' },
   })
 

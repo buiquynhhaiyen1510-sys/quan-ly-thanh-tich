@@ -7,10 +7,11 @@ import { parseAcademicYear } from '@/lib/skkn'
 
 const LEVEL_LABELS: Record<string, string> = {
   SCHOOL: 'Cấp trường',
-  DISTRICT: 'Cấp huyện',
+  DISTRICT: 'Cấp phường',
   CITY: 'Cấp tỉnh/TP',
 }
 const TASK_LABELS: Record<string, string> = {
+  NOT_COMPLETED: 'Chưa hoàn thành',
   GOOD: 'Hoàn thành tốt',
   EXCELLENT: 'Hoàn thành xuất sắc',
 }
