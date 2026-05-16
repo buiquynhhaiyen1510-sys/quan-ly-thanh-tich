@@ -7,6 +7,7 @@ import { useSession, signOut } from 'next-auth/react'
 const navLinks = [
   { href: '/admin', label: 'Dashboard' },
   { href: '/admin/teachers', label: 'Giáo viên' },
+  { href: '/admin/achievements', label: 'Thống kê thành tích' },
   { href: '/admin/eligibility', label: 'Xét duyệt' },
   { href: '/admin/rules', label: 'Quy tắc' },
   { href: '/admin/danh-hieu', label: 'Danh mục' },
