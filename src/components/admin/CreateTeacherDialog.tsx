@@ -13,6 +13,7 @@ interface FormData {
   fullName: string
   email: string
   password: string
+  role: 'TEACHER' | 'ADMIN'
   dateOfBirth: string
   department: string
   teachingSince: string
@@ -34,6 +35,7 @@ export function CreateTeacherDialog({
     fullName: '',
     email: '',
     password: '',
+    role: 'TEACHER',
     dateOfBirth: '',
     department: '',
     teachingSince: '',
@@ -80,6 +82,7 @@ export function CreateTeacherDialog({
         fullName: form.fullName,
         email: form.email,
         password: form.password,
+        role: form.role,
         dateOfBirth: form.dateOfBirth || null,
         department: form.department,
         teachingSince: parseInt(form.teachingSince, 10),
@@ -171,7 +174,7 @@ export function CreateTeacherDialog({
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Họ tên <span className="text-red-500">*</span>
@@ -198,6 +201,7 @@ export function CreateTeacherDialog({
                 value={form.email}
                 onChange={handleChange}
                 required
+                autoComplete="off"
                 data-testid="input-email"
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="giaovien@truong.edu.vn"
@@ -215,10 +219,26 @@ export function CreateTeacherDialog({
                 onChange={handleChange}
                 required
                 minLength={6}
+                autoComplete="new-password"
                 data-testid="input-password"
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Tối thiểu 6 ký tự"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Vai trò
+              </label>
+              <select
+                name="role"
+                value={form.role}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="TEACHER">Giáo viên (GV)</option>
+                <option value="ADMIN">Ban Giám Hiệu (BGH)</option>
+              </select>
             </div>
 
             <div>

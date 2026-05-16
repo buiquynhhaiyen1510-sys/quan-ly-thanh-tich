@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
   const {
     email,
     password,
+    role,
     fullName,
     dateOfBirth,
     department,
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
       data: {
         email,
         passwordHash,
-        role: 'TEACHER',
+        role: role ?? 'TEACHER',
         isActive: true,
         teacherProfile: {
           create: {

@@ -42,6 +42,7 @@ export default function AdminDashboardPage() {
   const [qName, setQName] = useState('')
   const [qDept, setQDept] = useState('')
   const [qYear, setQYear] = useState(new Date().getFullYear() - 5)
+  const [qRole, setQRole] = useState<'TEACHER' | 'ADMIN'>('TEACHER')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [createSuccess, setCreateSuccess] = useState<string | null>(null)
@@ -87,6 +88,7 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({
           email: qEmail.trim(),
           password: qPassword,
+          role: qRole,
           fullName: qName.trim(),
           department: qDept.trim(),
           teachingSince: qYear,
@@ -157,17 +159,17 @@ export default function AdminDashboardPage() {
               {createSuccess} — <button onClick={() => router.push('/admin/teachers')} className="underline">Xem danh sách GV</button>
             </div>
           )}
-          <form onSubmit={handleQuickCreate} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form onSubmit={handleQuickCreate} className="grid grid-cols-1 md:grid-cols-3 gap-4" autoComplete="off">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Email *</label>
               <input type="email" value={qEmail} onChange={e => setQEmail(e.target.value)}
-                placeholder="gv@tieuhoc.edu.vn" required
+                placeholder="gv@tieuhoc.edu.vn" required autoComplete="off"
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Mật khẩu *</label>
               <input type="password" value={qPassword} onChange={e => setQPassword(e.target.value)}
-                placeholder="Tối thiểu 8 ký tự" required minLength={8}
+                placeholder="Tối thiểu 8 ký tự" required minLength={8} autoComplete="new-password"
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
@@ -187,6 +189,14 @@ export default function AdminDashboardPage() {
               <input type="number" value={qYear} onChange={e => setQYear(parseInt(e.target.value))}
                 min={1970} max={new Date().getFullYear()}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Vai trò</label>
+              <select value={qRole} onChange={e => setQRole(e.target.value as 'TEACHER' | 'ADMIN')}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="TEACHER">Giáo viên (GV)</option>
+                <option value="ADMIN">Ban Giám Hiệu (BGH)</option>
+              </select>
             </div>
             <div className="flex items-end gap-3">
               <button type="submit" disabled={creating}

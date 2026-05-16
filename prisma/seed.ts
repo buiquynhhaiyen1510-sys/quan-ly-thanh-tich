@@ -41,7 +41,23 @@ async function main() {
   console.log(`  ✓ Admin: ${admin.email}`)
 
   // ---------------------------------------------------------------------------
-  // 2. Giáo viên 1
+  // 2. Ban Giám Hiệu (quyền Admin)
+  // ---------------------------------------------------------------------------
+  const bghPassword = await hash('BGH@123', 12)
+  const bgh = await prisma.user.upsert({
+    where: { email: 'bgh@tieuhoc.edu.vn' },
+    update: {},
+    create: {
+      email: 'bgh@tieuhoc.edu.vn',
+      passwordHash: bghPassword,
+      role: 'ADMIN',
+      isActive: true,
+    },
+  })
+  console.log(`  ✓ BGH: ${bgh.email}`)
+
+  // ---------------------------------------------------------------------------
+  // 3. Giáo viên 1
   // ---------------------------------------------------------------------------
   const teacherPassword = await hash('Teacher@123', 12)
 
@@ -273,6 +289,7 @@ async function main() {
   console.log('\n✅ Seed hoàn tất!')
   console.log('\nTài khoản mặc định:')
   console.log('  Admin:  admin@tieuhoc.edu.vn  /  Admin@123')
+  console.log('  BGH:    bgh@tieuhoc.edu.vn    /  BGH@123')
   console.log('  GV1:    gv1@tieuhoc.edu.vn    /  Teacher@123  (Nguyễn Thị Hoa — Tổ 3)')
   console.log('  GV2:    gv2@tieuhoc.edu.vn    /  Teacher@123  (Trần Thị Mai — Tổ 1)')
   console.log('\nDanh mục danh hiệu:')

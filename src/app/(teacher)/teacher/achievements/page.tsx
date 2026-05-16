@@ -356,6 +356,136 @@ export default function AchievementsPage() {
     }
   }
 
+  // --- Edit: competition title ---
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null)
+  const [editTitleDanhHieuId, setEditTitleDanhHieuId] = useState('')
+  const [editTitleLevel, setEditTitleLevel] = useState<'SCHOOL' | 'DISTRICT' | 'CITY'>('DISTRICT')
+  const [savingTitle, setSavingTitle] = useState(false)
+
+  function startEditTitle(t: CompetitionTitle) {
+    setEditingTitleId(t.id)
+    setEditTitleDanhHieuId(t.danhHieuId)
+    setEditTitleLevel(t.level ?? 'DISTRICT')
+  }
+
+  async function handleSaveTitle(id: string) {
+    setSavingTitle(true)
+    try {
+      const editDh = danhHieus.find(d => d.id === editTitleDanhHieuId)
+      const isCSTDEdit = editDh ? isCSTD(editDh.name) : false
+      const res = await fetch(`/api/teacher/competition-titles/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          danhHieuId: editTitleDanhHieuId,
+          level: isCSTDEdit ? null : editTitleLevel,
+        }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d?.error ?? 'Lưu thất bại')
+      }
+      setEditingTitleId(null)
+      await fetchAll()
+      showNotification('success', 'Đã cập nhật danh hiệu')
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    } finally {
+      setSavingTitle(false)
+    }
+  }
+
+  // --- Edit: award ---
+  const [editingAwardId, setEditingAwardId] = useState<string | null>(null)
+  const [editAwardType, setEditAwardType] = useState<'CERTIFICATE' | 'COMMENDATION' | 'CERTIFICATE_OF_MERIT'>('CERTIFICATE')
+  const [editAwardIssuer, setEditAwardIssuer] = useState('')
+  const [editAwardContent, setEditAwardContent] = useState('')
+  const [editAwardYear, setEditAwardYear] = useState('')
+  const [editAwardDecisionNumber, setEditAwardDecisionNumber] = useState('')
+  const [editAwardDecisionDate, setEditAwardDecisionDate] = useState('')
+  const [savingAward, setSavingAward] = useState(false)
+
+  function startEditAward(a: Award) {
+    setEditingAwardId(a.id)
+    setEditAwardType(a.type)
+    setEditAwardIssuer(a.issuingLevel)
+    setEditAwardContent(a.content)
+    setEditAwardYear(a.year)
+    setEditAwardDecisionNumber(a.decisionNumber ?? '')
+    setEditAwardDecisionDate(
+      a.decisionDate ? new Date(a.decisionDate).toISOString().split('T')[0] : ''
+    )
+  }
+
+  async function handleSaveAward(id: string) {
+    setSavingAward(true)
+    try {
+      const res = await fetch(`/api/teacher/awards/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: editAwardType,
+          issuingLevel: editAwardIssuer.trim(),
+          content: editAwardContent.trim(),
+          year: editAwardYear,
+          decisionNumber: editAwardDecisionNumber.trim() || null,
+          decisionDate: editAwardDecisionDate || null,
+        }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d?.error ?? 'Lưu thất bại')
+      }
+      setEditingAwardId(null)
+      await fetchAll()
+      showNotification('success', 'Đã cập nhật khen thưởng')
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    } finally {
+      setSavingAward(false)
+    }
+  }
+
+  // --- Edit: SKKN ---
+  const [editingSkknId, setEditingSkknId] = useState<string | null>(null)
+  const [editSkknTitle, setEditSkknTitle] = useState('')
+  const [editSkknLevel, setEditSkknLevel] = useState<'SCHOOL' | 'DISTRICT' | 'CITY'>('SCHOOL')
+  const [editSkknRating, setEditSkknRating] = useState('')
+  const [savingSkkn, setSavingSkkn] = useState(false)
+
+  function startEditSkkn(s: SKKN) {
+    setEditingSkknId(s.id)
+    setEditSkknTitle(s.title)
+    setEditSkknLevel(s.level)
+    setEditSkknRating(s.rating)
+  }
+
+  async function handleSaveSkkn(id: string) {
+    setSavingSkkn(true)
+    try {
+      const res = await fetch(`/api/teacher/skkn/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editSkknTitle.trim(),
+          level: editSkknLevel,
+          rating: editSkknRating.trim(),
+        }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d?.error ?? 'Lưu thất bại')
+      }
+      setEditingSkknId(null)
+      await fetchAll()
+      showNotification('success', 'Đã cập nhật SKKN')
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    } finally {
+      setSavingSkkn(false)
+    }
+  }
+
   // --- SKKN form ---
   const [skknTitle, setSkknTitle] = useState('')
   const [skknLevel, setSkknLevel] = useState<'SCHOOL' | 'DISTRICT' | 'CITY'>('SCHOOL')
@@ -427,14 +557,45 @@ export default function AchievementsPage() {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
+
+    const isImage = file.type.startsWith('image/')
+    const isPdf = file.type === 'application/pdf'
+    if (!isImage && !isPdf) {
+      showNotification('error', 'Chỉ chấp nhận file PDF hoặc ảnh (JPG, PNG...)')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showNotification('error', 'File không được vượt quá 10MB')
+      return
+    }
+
     setUploadingFile(true)
     try {
+      // 1. Get signed params from server
+      const sigRes = await fetch('/api/teacher/upload')
+      const sig = await sigRes.json()
+      if (!sigRes.ok) throw new Error(sig?.error ?? 'Không thể lấy chữ ký upload')
+
+      // 2. Upload directly to Cloudinary (bypasses Vercel, supports up to 100MB)
       const fd = new FormData()
       fd.append('file', file)
-      const res = await fetch('/api/teacher/upload', { method: 'POST', body: fd })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error ?? 'Upload thất bại')
-      setAwardAttachments(prev => [...prev, { url: data.url, name: data.name, fileType: data.fileType }])
+      fd.append('api_key', sig.apiKey)
+      fd.append('timestamp', String(sig.timestamp))
+      fd.append('signature', sig.signature)
+      fd.append('folder', sig.folder)
+
+      const uploadRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${sig.cloudName}/auto/upload`,
+        { method: 'POST', body: fd }
+      )
+      const data = await uploadRes.json()
+      if (!uploadRes.ok) throw new Error(data?.error?.message ?? 'Upload thất bại')
+
+      setAwardAttachments(prev => [...prev, {
+        url: data.secure_url,
+        name: file.name,
+        fileType: isImage ? 'image' : 'pdf',
+      }])
       showNotification('success', `Đã tải lên: ${file.name}`)
     } catch (err) {
       showNotification('error', err instanceof Error ? err.message : 'Upload thất bại')
@@ -610,35 +771,87 @@ export default function AchievementsPage() {
         {yearSkkns.length > 0 && (
           <div className="mb-4 divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
             {yearSkkns.map(s => (
-              <div key={s.id} className="flex items-start justify-between px-4 py-3 gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{s.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {LEVEL_LABELS[s.level]} · Xếp loại: {s.rating}
-                    {s.status === 'USED' && (
-                      <span className="ml-2 text-amber-600">
-                        (Đã dùng cho: {s.usedFor} — {s.usedYear})
+              <div key={s.id}>
+                {editingSkknId === s.id ? (
+                  <div className="px-4 py-3 bg-blue-50 space-y-2">
+                    <input
+                      type="text"
+                      value={editSkknTitle}
+                      onChange={e => setEditSkknTitle(e.target.value)}
+                      className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <div className="flex gap-2 flex-wrap">
+                      <select
+                        value={editSkknLevel}
+                        onChange={e => setEditSkknLevel(e.target.value as typeof editSkknLevel)}
+                        className="border border-gray-300 rounded px-2 py-1.5 text-sm bg-white"
+                      >
+                        <option value="SCHOOL">Cấp trường</option>
+                        <option value="DISTRICT">Cấp phường</option>
+                        <option value="CITY">Cấp tỉnh/TP</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={editSkknRating}
+                        onChange={e => setEditSkknRating(e.target.value)}
+                        placeholder="Xếp loại"
+                        className="border border-gray-300 rounded px-2 py-1.5 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <button
+                        onClick={() => handleSaveSkkn(s.id)}
+                        disabled={savingSkkn || !editSkknTitle.trim() || !editSkknRating.trim()}
+                        className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {savingSkkn ? 'Đang lưu...' : 'Lưu'}
+                      </button>
+                      <button
+                        onClick={() => setEditingSkknId(null)}
+                        className="text-sm text-gray-500 hover:text-gray-700 px-2"
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between px-4 py-3 gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{s.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {LEVEL_LABELS[s.level]} · Xếp loại: {s.rating}
+                        {s.status === 'USED' && (
+                          <span className="ml-2 text-amber-600">
+                            (Đã dùng cho: {s.usedFor} — {s.usedYear})
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                        s.status === 'UNUSED'
+                          ? 'bg-green-50 text-green-700'
+                          : 'bg-amber-50 text-amber-700'
+                      }`}>
+                        {s.status === 'UNUSED' ? 'Chưa dùng' : 'Đã dùng'}
                       </span>
-                    )}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${
-                    s.status === 'UNUSED'
-                      ? 'bg-green-50 text-green-700'
-                      : 'bg-amber-50 text-amber-700'
-                  }`}>
-                    {s.status === 'UNUSED' ? 'Chưa dùng' : 'Đã dùng'}
-                  </span>
-                  {s.status === 'UNUSED' && (
-                    <button
-                      onClick={() => handleDeleteSkkn(s.id)}
-                      className="text-xs text-red-600 hover:text-red-700 hover:underline"
-                    >
-                      Xóa
-                    </button>
-                  )}
-                </div>
+                      {s.status === 'UNUSED' && (
+                        <>
+                          <button
+                            onClick={() => startEditSkkn(s)}
+                            className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSkkn(s.id)}
+                            className="text-xs text-red-600 hover:text-red-700 hover:underline"
+                          >
+                            Xóa
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -704,24 +917,80 @@ export default function AchievementsPage() {
         {yearRecord && yearRecord.competitionTitles.length > 0 && (
           <div className="mb-4 divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
             {yearRecord.competitionTitles.map(t => (
-              <div key={t.id} className="flex items-center justify-between px-4 py-2.5">
-                <div className="text-sm text-gray-800">
-                  <span className="font-medium">
-                    {t.danhHieu?.name ?? danhHieus.find(d => d.id === t.danhHieuId)?.name ?? t.danhHieuId}
-                  </span>
-                  {t.level && <span className="text-gray-500"> — {LEVEL_LABELS[t.level]}</span>}
-                  {t.achievementMethod && (
-                    <span className="text-gray-400 text-xs ml-1">
-                      ({t.achievementMethod === 'METHOD_1' ? 'Cách 1' : 'Cách 2'})
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={() => handleDeleteTitle(t.id)}
-                  className="text-xs text-red-600 hover:text-red-700 hover:underline"
-                >
-                  Xóa
-                </button>
+              <div key={t.id}>
+                {editingTitleId === t.id ? (
+                  <div className="px-4 py-3 bg-blue-50 space-y-2">
+                    <div className="flex gap-2 flex-wrap items-end">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Danh hiệu</label>
+                        <select
+                          value={editTitleDanhHieuId}
+                          onChange={e => setEditTitleDanhHieuId(e.target.value)}
+                          className="border border-gray-300 rounded px-2 py-1.5 text-sm bg-white"
+                        >
+                          {danhHieus.map(d => (
+                            <option key={d.id} value={d.id}>{d.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {!isCSTD(danhHieus.find(d => d.id === editTitleDanhHieuId)?.name ?? '') && (
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Cấp</label>
+                          <select
+                            value={editTitleLevel}
+                            onChange={e => setEditTitleLevel(e.target.value as typeof editTitleLevel)}
+                            className="border border-gray-300 rounded px-2 py-1.5 text-sm bg-white"
+                          >
+                            <option value="SCHOOL">Cấp trường</option>
+                            <option value="DISTRICT">Cấp phường</option>
+                            <option value="CITY">Cấp tỉnh/TP</option>
+                          </select>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => handleSaveTitle(t.id)}
+                        disabled={savingTitle || !editTitleDanhHieuId}
+                        className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {savingTitle ? 'Đang lưu...' : 'Lưu'}
+                      </button>
+                      <button
+                        onClick={() => setEditingTitleId(null)}
+                        className="text-sm text-gray-500 hover:text-gray-700 px-2"
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between px-4 py-2.5">
+                    <div className="text-sm text-gray-800">
+                      <span className="font-medium">
+                        {t.danhHieu?.name ?? danhHieus.find(d => d.id === t.danhHieuId)?.name ?? t.danhHieuId}
+                      </span>
+                      {t.level && <span className="text-gray-500"> — {LEVEL_LABELS[t.level]}</span>}
+                      {t.achievementMethod && (
+                        <span className="text-gray-400 text-xs ml-1">
+                          ({t.achievementMethod === 'METHOD_1' ? 'HTXS' : 'SKKN'})
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => startEditTitle(t)}
+                        className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                      >
+                        Sửa
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTitle(t.id)}
+                        className="text-xs text-red-600 hover:text-red-700 hover:underline"
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -777,8 +1046,8 @@ export default function AchievementsPage() {
               className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
               <option value="">Không chọn</option>
-              <option value="METHOD_1">Cách 1</option>
-              <option value="METHOD_2">Cách 2 (có SKKN)</option>
+              <option value="METHOD_1">HTXS</option>
+              <option value="METHOD_2">SKKN</option>
             </select>
           </div>
 
@@ -799,7 +1068,7 @@ export default function AchievementsPage() {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" data-testid="skkn-modal">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-base font-semibold text-gray-900">
-                Chọn SKKN để tiêu — Cách 2
+                Chọn SKKN để tiêu
               </h3>
               <p className="text-xs text-gray-500 mt-0.5">
                 SKKN được chọn sẽ bị đánh dấu đã dùng sau khi xác nhận
@@ -905,31 +1174,109 @@ export default function AchievementsPage() {
               const typeLabel = a.type === 'CERTIFICATE' ? 'Giấy khen' : a.type === 'COMMENDATION' ? 'Bằng khen' : 'Giấy chứng nhận'
               const attachments: Attachment[] = Array.isArray(a.attachmentUrls) ? a.attachmentUrls : []
               return (
-                <div key={a.id} className="px-4 py-3 flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{a.content}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {typeLabel} · {a.issuingLevel} · Năm {a.year}
-                      {a.decisionNumber && <> · Số QĐ: {a.decisionNumber}</>}
-                      {a.decisionDate && <> · {new Date(a.decisionDate).toLocaleDateString('vi-VN')}</>}
-                    </p>
-                    {attachments.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-1.5">
-                        {attachments.map((att, i) => (
-                          <a key={i} href={att.url} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline bg-blue-50 px-2 py-0.5 rounded">
-                            {att.fileType === 'pdf' ? '📄' : '🖼️'} {att.name}
-                          </a>
-                        ))}
+                <div key={a.id}>
+                  {editingAwardId === a.id ? (
+                    <div className="px-4 py-3 bg-blue-50 space-y-2">
+                      <div className="flex gap-2 flex-wrap">
+                        <select
+                          value={editAwardType}
+                          onChange={e => setEditAwardType(e.target.value as typeof editAwardType)}
+                          className="border border-gray-300 rounded px-2 py-1.5 text-sm bg-white"
+                        >
+                          <option value="CERTIFICATE">Giấy khen</option>
+                          <option value="COMMENDATION">Bằng khen</option>
+                          <option value="CERTIFICATE_OF_MERIT">Giấy chứng nhận</option>
+                        </select>
+                        <input
+                          type="text"
+                          value={editAwardYear}
+                          onChange={e => setEditAwardYear(e.target.value)}
+                          maxLength={4}
+                          placeholder="Năm"
+                          className="border border-gray-300 rounded px-2 py-1.5 text-sm w-20 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                       </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleDeleteAward(a.id)}
-                    className="text-xs text-red-600 hover:text-red-700 hover:underline flex-shrink-0"
-                  >
-                    Xóa
-                  </button>
+                      <input
+                        type="text"
+                        value={editAwardIssuer}
+                        onChange={e => setEditAwardIssuer(e.target.value)}
+                        placeholder="Cơ quan khen thưởng"
+                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <input
+                        type="text"
+                        value={editAwardContent}
+                        onChange={e => setEditAwardContent(e.target.value)}
+                        placeholder="Nội dung khen thưởng"
+                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="flex gap-2 flex-wrap">
+                        <input
+                          type="text"
+                          value={editAwardDecisionNumber}
+                          onChange={e => setEditAwardDecisionNumber(e.target.value)}
+                          placeholder="Số QĐ (tùy chọn)"
+                          className="border border-gray-300 rounded px-2 py-1.5 text-sm flex-1 min-w-36 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                          type="date"
+                          value={editAwardDecisionDate}
+                          onChange={e => setEditAwardDecisionDate(e.target.value)}
+                          className="border border-gray-300 rounded px-2 py-1.5 text-sm bg-white"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSaveAward(a.id)}
+                          disabled={savingAward || !editAwardIssuer.trim() || !editAwardContent.trim()}
+                          className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {savingAward ? 'Đang lưu...' : 'Lưu'}
+                        </button>
+                        <button
+                          onClick={() => setEditingAwardId(null)}
+                          className="text-sm text-gray-500 hover:text-gray-700 px-2"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="px-4 py-3 flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">{a.content}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {typeLabel} · {a.issuingLevel} · Năm {a.year}
+                          {a.decisionNumber && <> · Số QĐ: {a.decisionNumber}</>}
+                          {a.decisionDate && <> · {new Date(a.decisionDate).toLocaleDateString('vi-VN')}</>}
+                        </p>
+                        {attachments.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            {attachments.map((att, i) => (
+                              <a key={i} href={att.url} target="_blank" rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline bg-blue-50 px-2 py-0.5 rounded">
+                                {att.fileType === 'pdf' ? '📄' : '🖼️'} {att.name}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => startEditAward(a)}
+                          className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          Sửa
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAward(a.id)}
+                          className="text-xs text-red-600 hover:text-red-700 hover:underline"
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })}

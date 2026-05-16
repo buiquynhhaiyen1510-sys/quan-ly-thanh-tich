@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const createTeacherSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
+  role: z.enum(['TEACHER', 'ADMIN']).default('TEACHER'),
   fullName: z.string().min(2),
   dateOfBirth: z.string(), // ISO date string
   department: z.string().min(1),
