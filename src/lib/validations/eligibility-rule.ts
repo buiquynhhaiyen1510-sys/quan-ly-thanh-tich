@@ -17,6 +17,11 @@ export const conditionSchema = z.object({
   taskResults: z.array(z.enum(['GOOD', 'EXCELLENT'])).optional(),
   // SKKN: minimum level required
   minLevel: z.enum(['SCHOOL', 'DISTRICT', 'CITY']).optional(),
+  // COMPETITION_TITLE: filter by title type and/or level
+  titleType: z.enum(['CHIEN_SI_THI_DUA', 'GV_GIOI', 'GV_CN_GIOI']).optional(),
+  titleLevel: z.enum(['SCHOOL', 'DISTRICT', 'CITY']).optional(),
+  // AWARD: filter by award type
+  awardType: z.enum(['CERTIFICATE', 'COMMENDATION', 'CERTIFICATE_OF_MERIT']).optional(),
 })
 
 export const conditionGroupSchema = z.object({

@@ -18,6 +18,9 @@ interface Condition {
   legalNote?: string
   taskResults?: ('GOOD' | 'EXCELLENT')[]
   minLevel?: 'SCHOOL' | 'DISTRICT' | 'CITY'
+  titleType?: 'CHIEN_SI_THI_DUA' | 'GV_GIOI' | 'GV_CN_GIOI'
+  titleLevel?: 'SCHOOL' | 'DISTRICT' | 'CITY'
+  awardType?: 'CERTIFICATE' | 'COMMENDATION' | 'CERTIFICATE_OF_MERIT'
 }
 
 interface ConditionGroup {
@@ -223,6 +226,55 @@ function ConditionEditor({
               })}
               <span className="text-xs text-gray-400 self-center">(không chọn = bất kỳ)</span>
             </div>
+          </div>
+        )}
+
+        {/* COMPETITION_TITLE-specific */}
+        {condition.type === 'COMPETITION_TITLE' && (
+          <>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Loại danh hiệu</label>
+              <select
+                value={condition.titleType ?? ''}
+                onChange={e => onChange({ ...condition, titleType: (e.target.value || undefined) as Condition['titleType'] })}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white"
+              >
+                <option value="">Bất kỳ loại nào</option>
+                <option value="CHIEN_SI_THI_DUA">Chiến sĩ thi đua (CSTĐ)</option>
+                <option value="GV_GIOI">Giáo viên giỏi</option>
+                <option value="GV_CN_GIOI">GV chủ nhiệm giỏi</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Cấp danh hiệu</label>
+              <select
+                value={condition.titleLevel ?? ''}
+                onChange={e => onChange({ ...condition, titleLevel: (e.target.value || undefined) as Condition['titleLevel'] })}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white"
+              >
+                <option value="">Bất kỳ cấp nào</option>
+                <option value="SCHOOL">Cấp trường</option>
+                <option value="DISTRICT">Cấp phường</option>
+                <option value="CITY">Cấp tỉnh/TP</option>
+              </select>
+            </div>
+          </>
+        )}
+
+        {/* AWARD-specific */}
+        {condition.type === 'AWARD' && (
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Loại khen thưởng</label>
+            <select
+              value={condition.awardType ?? ''}
+              onChange={e => onChange({ ...condition, awardType: (e.target.value || undefined) as Condition['awardType'] })}
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white"
+            >
+              <option value="">Bất kỳ loại nào</option>
+              <option value="CERTIFICATE">Giấy khen</option>
+              <option value="COMMENDATION">Bằng khen</option>
+              <option value="CERTIFICATE_OF_MERIT">Bằng khen Thủ tướng/Nhà nước</option>
+            </select>
           </div>
         )}
       </div>
@@ -643,11 +695,15 @@ export default function RulesPage() {
                             {group.conditions.map((c, ci) => (
                               <span key={ci} className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5 text-gray-600">
                                 {ci > 0 && <span className="text-blue-500 font-bold mr-1">VÀ</span>}
-                                {c.minCount > 0 ? `${c.minCount}x ` : ''}{c.type}
+                                {c.minCount > 0 ? `${c.minCount}x ` : ''}
+                                {c.type === 'TASK_RESULT' ? 'KQ nhiệm vụ' : c.type === 'SKKN' ? 'SKKN' : c.type === 'COMPETITION_TITLE' ? 'Danh hiệu' : 'Khen thưởng'}
                                 {c.type === 'TASK_RESULT' && c.taskResults?.length
                                   ? ` (${c.taskResults.map(r => r === 'GOOD' ? 'HTTốt' : 'HTXS').join('/')})`
                                   : ''}
                                 {c.type === 'SKKN' && c.minLevel ? ` cấp ${c.minLevel === 'SCHOOL' ? 'trường' : c.minLevel === 'DISTRICT' ? 'phường' : 'tỉnh'}+` : ''}
+                                {c.type === 'COMPETITION_TITLE' && c.titleType ? ` (${c.titleType === 'CHIEN_SI_THI_DUA' ? 'CSTĐ' : c.titleType === 'GV_GIOI' ? 'GV Giỏi' : 'GV CN Giỏi'})` : ''}
+                                {c.type === 'COMPETITION_TITLE' && c.titleLevel ? ` cấp ${c.titleLevel === 'SCHOOL' ? 'trường' : c.titleLevel === 'DISTRICT' ? 'phường' : 'tỉnh'}` : ''}
+                                {c.type === 'AWARD' && c.awardType ? ` (${c.awardType === 'CERTIFICATE' ? 'Giấy khen' : c.awardType === 'COMMENDATION' ? 'Bằng khen' : 'Bằng khen TT'})` : ''}
                               </span>
                             ))}
                           </div>
