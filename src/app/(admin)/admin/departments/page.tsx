@@ -32,7 +32,10 @@ export default function DepartmentsPage() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
-    if (!newName.trim()) return
+    if (!newName.trim()) {
+      showMessage('error', 'Vui lòng nhập tên tổ chuyên môn')
+      return
+    }
     const res = await fetch('/api/admin/departments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
