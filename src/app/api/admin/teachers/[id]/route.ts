@@ -110,8 +110,8 @@ export async function PATCH(
 
   const { action } = body as { action?: string }
 
-  if (action !== 'deactivate') {
-    return NextResponse.json({ error: 'Unknown action. Supported: deactivate' }, { status: 400 })
+  if (action !== 'deactivate' && action !== 'activate') {
+    return NextResponse.json({ error: 'Unknown action. Supported: deactivate, activate' }, { status: 400 })
   }
 
   const user = await db.user.findUnique({ where: { id: params.id } })
@@ -121,7 +121,7 @@ export async function PATCH(
 
   const updated = await db.user.update({
     where: { id: params.id },
-    data: { isActive: false },
+    data: { isActive: action === 'activate' },
     include: { teacherProfile: true },
   })
 

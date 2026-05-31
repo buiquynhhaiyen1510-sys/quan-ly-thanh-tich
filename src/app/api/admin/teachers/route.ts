@@ -87,31 +87,44 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Email already in use' }, { status: 409 })
   }
 
+  // Validate dateOfBirth year hợp lệ
+  if (dateOfBirth) {
+    const year = new Date(dateOfBirth).getFullYear()
+    if (isNaN(year) || year < 1930 || year > new Date().getFullYear()) {
+      return NextResponse.json({ error: 'Ngày sinh không hợp lệ' }, { status: 422 })
+    }
+  }
+
   const passwordHash = await hash(password, 12)
 
-  const created = await db.$transaction(async (tx) => {
-    const user = await tx.user.create({
-      data: {
-        email,
-        passwordHash,
-        role: role ?? 'TEACHER',
-        isActive: true,
-        teacherProfile: {
-          create: {
-            fullName,
-            dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-            department,
-            teachingSince,
-            isPartyMember,
-            partyJoinDate: partyJoinDate ? new Date(partyJoinDate) : null,
+  try {
+    const created = await db.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          role: role ?? 'TEACHER',
+          isActive: true,
+          teacherProfile: {
+            create: {
+              fullName,
+              dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+              department,
+              teachingSince,
+              isPartyMember,
+              partyJoinDate: partyJoinDate ? new Date(partyJoinDate) : null,
+            },
           },
         },
-      },
-      include: { teacherProfile: true },
+        include: { teacherProfile: true },
+      })
+      return user
     })
-    return user
-  })
 
-  const safe = sanitizeUser(created as unknown as { passwordHash?: string; [key: string]: unknown })
-  return NextResponse.json(safe, { status: 201 })
+    const safe = sanitizeUser(created as unknown as { passwordHash?: string; [key: string]: unknown })
+    return NextResponse.json(safe, { status: 201 })
+  } catch (err) {
+    console.error('[POST /api/admin/teachers]', err)
+    return NextResponse.json({ error: 'Tạo giáo viên thất bại, vui lòng thử lại' }, { status: 500 })
+  }
 }

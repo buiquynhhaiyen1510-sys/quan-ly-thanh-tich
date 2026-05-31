@@ -115,10 +115,26 @@ export default function TeachersPage() {
       showNotification('success', `Đã vô hiệu hóa tài khoản ${teacherName}`)
       fetchTeachers()
     } catch (err) {
-      showNotification(
-        'error',
-        err instanceof Error ? err.message : 'Có lỗi xảy ra'
-      )
+      showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    }
+  }
+
+  async function handleActivate(teacherId: string, teacherName: string) {
+    if (!confirm(`Kích hoạt lại tài khoản của ${teacherName}?`)) return
+    try {
+      const res = await fetch(`/api/admin/teachers/${teacherId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'activate' }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data?.error ?? 'Kích hoạt thất bại')
+      }
+      showNotification('success', `Đã kích hoạt tài khoản ${teacherName}`)
+      fetchTeachers()
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
     }
   }
 
@@ -275,7 +291,7 @@ export default function TeachersPage() {
                       >
                         Reset MK
                       </button>
-                      {teacher.isActive && (
+                      {teacher.isActive ? (
                         <button
                           onClick={() =>
                             handleDeactivate(
@@ -287,6 +303,19 @@ export default function TeachersPage() {
                           className="border px-3 py-1 rounded text-xs font-medium text-red-600 border-red-200 hover:bg-red-50 transition-colors"
                         >
                           Vô hiệu hóa
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            handleActivate(
+                              teacher.id,
+                              teacher.teacherProfile?.fullName ?? teacher.email
+                            )
+                          }
+                          data-testid={`btn-activate-${teacher.id}`}
+                          className="border px-3 py-1 rounded text-xs font-medium text-green-600 border-green-200 hover:bg-green-50 transition-colors"
+                        >
+                          Kích hoạt lại
                         </button>
                       )}
                     </div>
