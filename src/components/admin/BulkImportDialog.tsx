@@ -58,15 +58,22 @@ function validateRow(row: ParsedRow): string[] {
   return errs
 }
 
+function splitLine(line: string): string[] {
+  // Ưu tiên tab (Excel), fallback sang nhiều space liên tiếp
+  if (line.includes('\t')) return line.split('\t')
+  return line.split(/\s{2,}/)
+}
+
 function parseExcel(text: string): ParsedRow[] {
-  const lines = text.split('\n').map(l => l.trimEnd()).filter(l => l.trim())
+  const lines = text.split(/\r?\n/).map(l => l.trimEnd()).filter(l => l.trim())
   const rows: ParsedRow[] = []
 
   for (let i = 0; i < lines.length; i++) {
-    const cols = lines[i].split('\t')
+    const cols = splitLine(lines[i])
     const emailRaw = (cols[1] ?? '').trim()
-    // Bỏ qua hàng tiêu đề
-    if (i === 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw)) continue
+    // Chỉ bỏ hàng tiêu đề nếu cột đầu là text rõ ràng (Họ tên, Tên GV, v.v.)
+    const firstCol = (cols[0] ?? '').trim().toLowerCase()
+    if (i === 0 && (firstCol === 'họ tên' || firstCol === 'tên' || firstCol === 'họ và tên' || firstCol === 'fullname')) continue
 
     const isParty = isPartyValue(cols[6] ?? '')
     const row: ParsedRow = {
@@ -217,9 +224,9 @@ export function BulkImportDialog({ open, onOpenChange, onDone }: BulkImportDialo
               <Dialog.Title className="text-lg font-semibold text-gray-900">
                 Nhập giáo viên từ Excel
               </Dialog.Title>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <Dialog.Description className="text-xs text-gray-500 mt-0.5">
                 Copy dữ liệu từ Excel và dán vào đây
-              </p>
+              </Dialog.Description>
             </div>
             <Dialog.Close className="text-gray-400 hover:text-gray-600">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
