@@ -35,7 +35,16 @@ export async function POST(req: NextRequest) {
   const existing = await db.department.findUnique({
     where: { name: parsed.data.name },
   })
+
   if (existing) {
+    if (!existing.isActive) {
+      // Tổ đã bị xóa mềm — kích hoạt lại thay vì tạo mới
+      const reactivated = await db.department.update({
+        where: { id: existing.id },
+        data: { isActive: true, order: parsed.data.order ?? existing.order },
+      })
+      return NextResponse.json(reactivated, { status: 201 })
+    }
     return NextResponse.json({ error: 'Tên tổ đã tồn tại' }, { status: 409 })
   }
 
