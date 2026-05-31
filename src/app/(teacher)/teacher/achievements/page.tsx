@@ -57,6 +57,7 @@ interface Rule {
   id: string
   targetTitle: string
   isActive: boolean
+  danhHieuId: string | null
 }
 
 interface AvailableSKKN {
@@ -239,12 +240,14 @@ export default function AchievementsPage() {
     setModalError(null)
     setModalLoading(true)
     try {
-      const res = await fetch('/api/admin/rules')
+      const res = await fetch('/api/teacher/rules')
       if (res.ok) {
         const data: Rule[] = await res.json()
-        const active = data.filter(r => r.isActive)
-        setModalRules(active)
-        if (active.length > 0) setModalRuleId(active[0].id)
+        setModalRules(data)
+        // Ưu tiên chọn rule gắn với danh hiệu đang chọn
+        const matched = data.find(r => r.danhHieuId === titleDanhHieuId)
+        const defaultRule = matched ?? data[0]
+        if (defaultRule) setModalRuleId(defaultRule.id)
       }
     } catch {
       setModalError('Không thể tải danh sách quy tắc')
