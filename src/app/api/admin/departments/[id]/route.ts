@@ -14,18 +14,33 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const { error } = await requireAdmin()
   if (error) return error
 
-  const body = await req.json()
+  const body = await req.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+
   const parsed = updateSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 })
   }
 
-  const department = await db.department.update({
-    where: { id: params.id },
-    data: parsed.data,
-  })
+  // Kiểm tra tên trùng với tổ khác
+  if (parsed.data.name) {
+    const dup = await db.department.findFirst({
+      where: { name: parsed.data.name, NOT: { id: params.id } },
+    })
+    if (dup) {
+      return NextResponse.json({ error: 'Tên tổ đã tồn tại' }, { status: 409 })
+    }
+  }
 
-  return NextResponse.json(department)
+  try {
+    const department = await db.department.update({
+      where: { id: params.id },
+      data: parsed.data,
+    })
+    return NextResponse.json(department)
+  } catch {
+    return NextResponse.json({ error: 'Cập nhật thất bại' }, { status: 500 })
+  }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {

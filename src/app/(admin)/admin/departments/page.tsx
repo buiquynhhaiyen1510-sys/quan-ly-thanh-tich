@@ -63,7 +63,8 @@ export default function DepartmentsPage() {
       fetchDepartments()
       showMessage('success', 'Đã cập nhật')
     } else {
-      showMessage('error', 'Có lỗi xảy ra')
+      const data = await res.json().catch(() => ({}))
+      showMessage('error', data?.error ?? 'Có lỗi xảy ra')
     }
   }
 
