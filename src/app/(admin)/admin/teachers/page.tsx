@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { CreateTeacherDialog } from '@/components/admin/CreateTeacherDialog'
+import { BulkImportDialog } from '@/components/admin/BulkImportDialog'
 
 interface Teacher {
   id: string
@@ -23,6 +24,7 @@ export default function TeachersPage() {
   const [search, setSearch] = useState('')
   const [departmentFilter, setDepartmentFilter] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
   const [actionNotification, setActionNotification] = useState<{
     type: 'success' | 'error'
     message: string
@@ -147,13 +149,21 @@ export default function TeachersPage() {
             Danh sách giáo viên trong hệ thống
           </p>
         </div>
-        <button
-          onClick={() => setDialogOpen(true)}
-          data-testid="btn-add-teacher"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium transition-colors"
-        >
-          + Thêm giáo viên
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setBulkOpen(true)}
+            className="border border-blue-600 text-blue-600 px-4 py-2 rounded hover:bg-blue-50 text-sm font-medium transition-colors"
+          >
+            Nhập từ Excel
+          </button>
+          <button
+            onClick={() => setDialogOpen(true)}
+            data-testid="btn-add-teacher"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium transition-colors"
+          >
+            + Thêm giáo viên
+          </button>
+        </div>
       </div>
 
       {actionNotification && (
@@ -335,6 +345,12 @@ export default function TeachersPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onCreated={fetchTeachers}
+      />
+
+      <BulkImportDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        onDone={fetchTeachers}
       />
     </div>
   )
