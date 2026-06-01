@@ -126,21 +126,27 @@ export default function AchievementsReportPage() {
   // Áp dụng bộ lọc client-side
   const data = useMemo(() => {
     return rawData.filter(t => {
-      if (filterTaskResult === 'NOT_ENTERED' && t.yearlyRecord) return false
-      if (filterTaskResult === 'NOT_ENTERED' && !t.yearlyRecord) return true
-      if (filterTaskResult && filterTaskResult !== 'NOT_ENTERED') {
-        if (t.yearlyRecord?.taskResult !== filterTaskResult) return false
-      }
-      if (filterSKKNLevel) {
-        if (!t.skkns.some(s => s.level === filterSKKNLevel)) return false
-      }
-      if (filterTitleType) {
-        const titles = t.yearlyRecord?.competitionTitles ?? []
-        if (!titles.some(tt => tt.type === filterTitleType)) return false
-      }
-      if (filterAwardType) {
-        if (!t.awards.some(a => a.type === filterAwardType)) return false
-      }
+      // KQ nhiệm vụ
+      if (filterTaskResult === 'NOT_ENTERED') { if (t.yearlyRecord) return false }
+      else if (filterTaskResult) { if (t.yearlyRecord?.taskResult !== filterTaskResult) return false }
+
+      // Danh hiệu thi đua
+      const titles = t.yearlyRecord?.competitionTitles ?? []
+      if (filterTitleType === 'HAS_ANY') { if (titles.length === 0) return false }
+      else if (filterTitleType === 'NONE') { if (titles.length > 0) return false }
+      else if (filterTitleType) { if (!titles.some(tt => tt.type === filterTitleType)) return false }
+
+      // SKKN
+      if (filterSKKNLevel === 'HAS_ANY') { if (t.skkns.length === 0) return false }
+      else if (filterSKKNLevel === 'NONE') { if (t.skkns.length > 0) return false }
+      else if (filterSKKNLevel === 'HAS_UNUSED') { if (!t.skkns.some(s => s.status === 'UNUSED')) return false }
+      else if (filterSKKNLevel) { if (!t.skkns.some(s => s.level === filterSKKNLevel)) return false }
+
+      // Khen thưởng
+      if (filterAwardType === 'HAS_ANY') { if (t.awards.length === 0) return false }
+      else if (filterAwardType === 'NONE') { if (t.awards.length > 0) return false }
+      else if (filterAwardType) { if (!t.awards.some(a => a.type === filterAwardType)) return false }
+
       return true
     })
   }, [rawData, filterTaskResult, filterSKKNLevel, filterTitleType, filterAwardType])
@@ -238,64 +244,60 @@ export default function AchievementsReportPage() {
             </select>
           </div>
 
-          {availableTitleTypes.size > 0 && (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
-                Danh hiệu thi đua
-              </label>
-              <select
-                value={filterTitleType}
-                onChange={e => setFilterTitleType(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="">Tất cả</option>
-                {availableTitleTypes.has('CHIEN_SI_THI_DUA') && (
-                  <option value="CHIEN_SI_THI_DUA">Chiến sĩ thi đua (CSTĐ)</option>
-                )}
-                {availableTitleTypes.has('GV_GIOI') && (
-                  <option value="GV_GIOI">Giáo viên giỏi</option>
-                )}
-                {availableTitleTypes.has('GV_CN_GIOI') && (
-                  <option value="GV_CN_GIOI">GV chủ nhiệm giỏi</option>
-                )}
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+              Danh hiệu thi đua
+            </label>
+            <select
+              value={filterTitleType}
+              onChange={e => setFilterTitleType(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">Tất cả</option>
+              <option value="HAS_ANY">Có danh hiệu</option>
+              <option value="NONE">Chưa có</option>
+              <option value="CHIEN_SI_THI_DUA">Chiến sĩ thi đua (CSTĐ)</option>
+              <option value="GV_GIOI">Giáo viên giỏi</option>
+              <option value="GV_CN_GIOI">GV chủ nhiệm giỏi</option>
+            </select>
+          </div>
 
-          {availableSKKNLevels.size > 0 && (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
-                Cấp SKKN
-              </label>
-              <select
-                value={filterSKKNLevel}
-                onChange={e => setFilterSKKNLevel(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="">Tất cả</option>
-                {availableSKKNLevels.has('SCHOOL') && <option value="SCHOOL">Cấp trường</option>}
-                {availableSKKNLevels.has('DISTRICT') && <option value="DISTRICT">Cấp phường</option>}
-                {availableSKKNLevels.has('CITY') && <option value="CITY">Cấp tỉnh/TP</option>}
-              </select>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+              SKKN
+            </label>
+            <select
+              value={filterSKKNLevel}
+              onChange={e => setFilterSKKNLevel(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">Tất cả</option>
+              <option value="HAS_ANY">Có SKKN</option>
+              <option value="NONE">Không có SKKN</option>
+              <option value="HAS_UNUSED">Có SKKN chưa dùng</option>
+              <option value="SCHOOL">Cấp trường</option>
+              <option value="DISTRICT">Cấp phường</option>
+              <option value="CITY">Cấp tỉnh/TP</option>
+            </select>
             </div>
-          )}
 
-          {availableAwardTypes.size > 0 && (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
-                Khen thưởng
-              </label>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+              Khen thưởng
+            </label>
               <select
                 value={filterAwardType}
                 onChange={e => setFilterAwardType(e.target.value)}
                 className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="">Tất cả</option>
-                {availableAwardTypes.has('CERTIFICATE') && <option value="CERTIFICATE">Giấy khen</option>}
-                {availableAwardTypes.has('COMMENDATION') && <option value="COMMENDATION">Bằng khen</option>}
+              <option value="HAS_ANY">Có khen thưởng</option>
+              <option value="NONE">Chưa có</option>
+              <option value="CERTIFICATE">Giấy khen</option>
+              <option value="COMMENDATION">Bằng khen</option>
+              <option value="CERTIFICATE_OF_MERIT">Bằng khen TT/Nhà nước</option>
               </select>
             </div>
-          )}
 
           {hasActiveFilter && (
             <button
