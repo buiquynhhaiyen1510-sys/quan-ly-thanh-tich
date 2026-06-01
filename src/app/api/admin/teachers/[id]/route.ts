@@ -64,7 +64,7 @@ export async function PUT(
     return NextResponse.json({ error: 'Teacher not found' }, { status: 404 })
   }
 
-  const { fullName, dateOfBirth, department, teachingSince, isPartyMember, partyJoinDate } = parsed.data
+  const { fullName, dateOfBirth, department, teachingSince, isPartyMember, partyJoinDate, role } = parsed.data
 
   const profileData = {
     fullName: fullName ?? '',
@@ -78,6 +78,7 @@ export async function PUT(
   const updated = await db.user.update({
     where: { id: params.id },
     data: {
+      ...(role ? { role } : {}),
       teacherProfile: user.teacherProfile
         ? { update: profileData }
         : { create: profileData },

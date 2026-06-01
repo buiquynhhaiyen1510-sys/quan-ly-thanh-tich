@@ -59,6 +59,7 @@ interface Department {
 interface TeacherDetail {
   id: string
   email: string
+  role: 'TEACHER' | 'ADMIN'
   isActive: boolean
   createdAt: string
   teacherProfile: {
@@ -79,6 +80,7 @@ interface EditForm {
   teachingSince: string
   isPartyMember: boolean
   partyJoinDate: string
+  role: 'TEACHER' | 'ADMIN'
 }
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -184,6 +186,7 @@ export default function TeacherDetailPage() {
       teachingSince: String(teacher.teacherProfile?.teachingSince ?? ''),
       isPartyMember: teacher.teacherProfile?.isPartyMember ?? false,
       partyJoinDate: toDateInputValue(teacher.teacherProfile?.partyJoinDate),
+      role: teacher.role ?? 'TEACHER',
     })
     setEditing(true)
   }
@@ -216,12 +219,13 @@ export default function TeacherDetailPage() {
         fullName: editForm.fullName,
         dateOfBirth: editForm.dateOfBirth || null,
         department: editForm.department,
-        teachingSince: parseInt(editForm.teachingSince, 10),
+        teachingSince: parseInt(editForm.teachingSince, 10) || undefined,
         isPartyMember: editForm.isPartyMember,
         partyJoinDate:
           editForm.isPartyMember && editForm.partyJoinDate
             ? editForm.partyJoinDate
             : null,
+        role: editForm.role,
       }
       const res = await fetch(`/api/admin/teachers/${id}`, {
         method: 'PUT',
@@ -410,6 +414,28 @@ export default function TeacherDetailPage() {
               Email
             </label>
             <p className="text-sm text-gray-900">{teacher.email}</p>
+          </div>
+
+          {/* Vai trò */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+              Vai trò
+            </label>
+            {editing ? (
+              <select
+                name="role"
+                value={editForm.role}
+                onChange={handleEditChange}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="TEACHER">Giáo viên (GV)</option>
+                <option value="ADMIN">Ban Giám Hiệu (BGH)</option>
+              </select>
+            ) : (
+              <p className="text-sm text-gray-900">
+                {teacher.role === 'ADMIN' ? 'Ban Giám Hiệu (BGH)' : 'Giáo viên (GV)'}
+              </p>
+            )}
           </div>
 
           {/* Ngày sinh */}
