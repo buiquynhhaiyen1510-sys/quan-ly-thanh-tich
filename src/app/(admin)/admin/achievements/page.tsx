@@ -399,7 +399,7 @@ export default function AchievementsReportPage() {
                           <div className="space-y-0.5">
                             {titles.map(title => (
                               <div key={title.id} className="text-xs text-gray-700">
-                                {TITLE_LABELS[title.type] ?? title.type}
+                                {title.danhHieu?.name ?? title.danhHieuId}
                                 {title.level ? ` (${LEVEL_LABELS[title.level] ?? title.level})` : ''}
                                 {title.achievementMethod
                                   ? ` — ${METHOD_LABELS[title.achievementMethod] ?? title.achievementMethod}`
