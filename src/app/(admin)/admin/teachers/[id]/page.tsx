@@ -116,6 +116,7 @@ export default function TeacherDetailPage() {
     teachingSince: '',
     isPartyMember: false,
     partyJoinDate: '',
+    role: 'TEACHER',
   })
   const [saveLoading, setSaveLoading] = useState(false)
 
