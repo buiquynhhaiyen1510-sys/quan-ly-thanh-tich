@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       : t.awards
 
     return {
-      id: t.id,
+      id: t.userId,
       fullName: t.fullName,
       department: t.department,
       isPartyMember: t.isPartyMember,
