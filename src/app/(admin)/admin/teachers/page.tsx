@@ -121,6 +121,19 @@ export default function TeachersPage() {
     }
   }
 
+  async function handleDelete(teacherId: string, teacherName: string) {
+    if (!confirm(`XÓA VĨNH VIỄN tài khoản "${teacherName}"?\n\nToàn bộ dữ liệu (SKKN, thành tích, khen thưởng) sẽ bị xóa và KHÔNG THỂ khôi phục.\n\nBấm OK để xác nhận xóa.`)) return
+    try {
+      const res = await fetch(`/api/admin/teachers/${teacherId}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error ?? 'Xóa thất bại')
+      showNotification('success', `Đã xóa tài khoản ${teacherName}`)
+      fetchTeachers()
+    } catch (err) {
+      showNotification('error', err instanceof Error ? err.message : 'Có lỗi xảy ra')
+    }
+  }
+
   async function handleActivate(teacherId: string, teacherName: string) {
     if (!confirm(`Kích hoạt lại tài khoản của ${teacherName}?`)) return
     try {
@@ -315,18 +328,32 @@ export default function TeachersPage() {
                           Vô hiệu hóa
                         </button>
                       ) : (
-                        <button
-                          onClick={() =>
-                            handleActivate(
-                              teacher.id,
-                              teacher.teacherProfile?.fullName ?? teacher.email
-                            )
-                          }
-                          data-testid={`btn-activate-${teacher.id}`}
-                          className="border px-3 py-1 rounded text-xs font-medium text-green-600 border-green-200 hover:bg-green-50 transition-colors"
-                        >
-                          Kích hoạt lại
-                        </button>
+                        <>
+                          <button
+                            onClick={() =>
+                              handleActivate(
+                                teacher.id,
+                                teacher.teacherProfile?.fullName ?? teacher.email
+                              )
+                            }
+                            data-testid={`btn-activate-${teacher.id}`}
+                            className="border px-3 py-1 rounded text-xs font-medium text-green-600 border-green-200 hover:bg-green-50 transition-colors"
+                          >
+                            Kích hoạt lại
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDelete(
+                                teacher.id,
+                                teacher.teacherProfile?.fullName ?? teacher.email
+                              )
+                            }
+                            data-testid={`btn-delete-${teacher.id}`}
+                            className="border px-3 py-1 rounded text-xs font-medium text-red-700 border-red-300 hover:bg-red-50 transition-colors"
+                          >
+                            Xóa
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>
