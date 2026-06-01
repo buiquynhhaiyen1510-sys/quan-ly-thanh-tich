@@ -12,9 +12,15 @@ export const createTeacherSchema = z.object({
   partyJoinDate: z.string().nullable().optional(),
 })
 
-export const updateTeacherSchema = createTeacherSchema
-  .omit({ email: true, password: true })
-  .partial()
+export const updateTeacherSchema = z.object({
+  fullName: z.string().min(2).optional(),
+  dateOfBirth: z.string().nullable().optional(),
+  department: z.string().optional(),
+  teachingSince: z.number().int().min(1970).max(new Date().getFullYear()).optional(),
+  isPartyMember: z.boolean().optional(),
+  partyJoinDate: z.string().nullable().optional(),
+  role: z.enum(['TEACHER', 'ADMIN']).optional(),
+})
 
 export const resetPasswordSchema = z.object({
   newPassword: z.string().min(8),
