@@ -161,7 +161,7 @@ export default function AchievementsReportPage() {
   // Chỉ hiển thị các option filter có dữ liệu thực tế
   const availableTitleTypes = useMemo(() => {
     const types = new Set<string>()
-    rawData.forEach(t => t.yearlyRecord?.competitionTitles.forEach(ct => types.add(ct.type)))
+    rawData.forEach(t => t.yearlyRecord?.competitionTitles.forEach(ct => types.add(ct.danhHieuId)))
     return types
   }, [rawData])
 
