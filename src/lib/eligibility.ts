@@ -132,17 +132,35 @@ async function checkSKKN(
   }
 }
 
+// Map titleType enum → DanhHieu name keyword
+const TITLE_TYPE_KEYWORDS: Record<string, string> = {
+  CHIEN_SI_THI_DUA: 'chiến sĩ',
+  GV_GIOI: 'giáo viên giỏi',
+  GV_CN_GIOI: 'chủ nhiệm',
+}
+
 async function checkCompetitionTitle(
   teacherId: string,
   condition: ConditionInput,
   conditionIndex: number,
   referenceYear: string
 ): Promise<ConditionResult> {
+  // Build danhHieu name filter if titleType specified
+  const danhHieuWhere = condition.titleType
+    ? { danhHieu: { name: { contains: TITLE_TYPE_KEYWORDS[condition.titleType] ?? '', mode: 'insensitive' as const } } }
+    : {}
+
+  // Build level filter if titleLevel specified
+  const levelWhere = condition.titleLevel ? { level: condition.titleLevel } : {}
+
   const records = await db.yearlyRecord.findMany({
     where: { teacherId },
     select: {
       academicYear: true,
-      competitionTitles: { select: { id: true } },
+      competitionTitles: {
+        where: { ...danhHieuWhere, ...levelWhere },
+        select: { id: true },
+      },
     },
   })
 
@@ -176,6 +194,7 @@ async function checkAward(
     where: {
       teacherId,
       ...(calYears ? { year: { in: Array.from(calYears) } } : {}),
+      ...(condition.awardType ? { type: condition.awardType } : {}),
     },
     select: { id: true },
   })
