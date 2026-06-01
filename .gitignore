@@ -5,6 +5,9 @@
 !.env.example
 !.env.*.example
 
+# Thông tin tài khoản nội bộ (không commit)
+TAI_KHOAN.md
+
 # Dependencies
 node_modules/
 .pnp

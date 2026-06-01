@@ -160,20 +160,13 @@ async function main() {
   // 5. Danh mục danh hiệu (DanhHieu)
   //    Thay thế enum CompetitionTitleType — Admin có thể CRUD từ /admin/danh-hieu
   // ---------------------------------------------------------------------------
-  const defaultDanhHieus = [
-    { name: 'Chiến sĩ thi đua cơ sở', description: 'Danh hiệu thi đua cơ sở hàng năm', order: 0 },
-    { name: 'Giáo viên giỏi', description: 'GV đạt danh hiệu giỏi cấp trường/phường/tỉnh', order: 1 },
-    { name: 'GV chủ nhiệm giỏi', description: 'Giáo viên chủ nhiệm giỏi', order: 2 },
-  ]
-
-  const createdDanhHieus: { id: string; name: string }[] = []
-  for (const dh of defaultDanhHieus) {
-    const item = await prisma.danhHieu.create({
-      data: { ...dh, isActive: true },
-    })
-    createdDanhHieus.push({ id: item.id, name: item.name })
-  }
-  console.log(`  ✓ ${createdDanhHieus.length} danh hiệu mẫu`)
+  // Chỉ seed "Chiến sĩ thi đua cơ sở" vì EligibilityRule cần liên kết với nó.
+  // Các danh hiệu khác (GV Giỏi, GV CN Giỏi...) do Admin/BGH tự tạo trong /admin/danh-hieu.
+  const cstdEntry = await prisma.danhHieu.create({
+    data: { name: 'Chiến sĩ thi đua cơ sở', description: 'Danh hiệu thi đua cơ sở hàng năm', order: 0, isActive: true },
+  })
+  const createdDanhHieus = [{ id: cstdEntry.id, name: cstdEntry.name }]
+  console.log(`  ✓ 1 danh hiệu mẫu (Chiến sĩ thi đua cơ sở)`)
 
   const cstdDanhHieu = createdDanhHieus.find(d => d.name === 'Chiến sĩ thi đua cơ sở')!
 

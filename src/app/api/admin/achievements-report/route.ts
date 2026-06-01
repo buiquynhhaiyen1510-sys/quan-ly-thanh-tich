@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       skkns: true,
       awards: true,
       yearlyRecords: {
-        include: { competitionTitles: true },
+        include: { competitionTitles: { include: { danhHieu: true } } },
         orderBy: { academicYear: 'desc' },
       },
     },

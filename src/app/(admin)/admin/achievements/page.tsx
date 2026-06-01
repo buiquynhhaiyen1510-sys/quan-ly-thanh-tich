@@ -5,9 +5,15 @@ import Link from 'next/link'
 
 interface CompetitionTitle {
   id: string
-  type: string
+  danhHieuId: string
+  danhHieu?: { id: string; name: string }
   level: string | null
   achievementMethod: string | null
+}
+
+interface DanhHieuOption {
+  id: string
+  name: string
 }
 
 interface YearlyRecord {
@@ -95,13 +101,14 @@ export default function AchievementsReportPage() {
 
   const [rawData, setRawData] = useState<TeacherStat[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
+  const [danhHieus, setDanhHieus] = useState<DanhHieuOption[]>([])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetch('/api/admin/departments')
-      .then(r => r.json())
-      .then(setDepartments)
-      .catch(() => {})
+    fetch('/api/admin/departments').then(r => r.json()).then(setDepartments).catch(() => {})
+    fetch('/api/admin/danh-hieu').then(r => r.json()).then((data: DanhHieuOption[]) =>
+      setDanhHieus(data.filter((d: DanhHieuOption & { isActive?: boolean }) => d.isActive !== false))
+    ).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -134,7 +141,7 @@ export default function AchievementsReportPage() {
       const titles = t.yearlyRecord?.competitionTitles ?? []
       if (filterTitleType === 'HAS_ANY') { if (titles.length === 0) return false }
       else if (filterTitleType === 'NONE') { if (titles.length > 0) return false }
-      else if (filterTitleType) { if (!titles.some(tt => tt.type === filterTitleType)) return false }
+      else if (filterTitleType) { if (!titles.some(tt => tt.danhHieuId === filterTitleType)) return false }
 
       // SKKN
       if (filterSKKNLevel === 'HAS_ANY') { if (t.skkns.length === 0) return false }
@@ -256,9 +263,9 @@ export default function AchievementsReportPage() {
               <option value="">Tất cả</option>
               <option value="HAS_ANY">Có danh hiệu</option>
               <option value="NONE">Chưa có</option>
-              <option value="CHIEN_SI_THI_DUA">Chiến sĩ thi đua (CSTĐ)</option>
-              <option value="GV_GIOI">Giáo viên giỏi</option>
-              <option value="GV_CN_GIOI">GV chủ nhiệm giỏi</option>
+              {danhHieus.map(d => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
             </select>
           </div>
 
