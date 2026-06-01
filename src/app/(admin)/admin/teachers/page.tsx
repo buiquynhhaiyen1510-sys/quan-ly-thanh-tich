@@ -296,8 +296,8 @@ export default function TeachersPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 border-t">
-                    <div className="flex items-center gap-2 flex-wrap">
+                  <td className="px-4 py-3 border-t whitespace-nowrap">
+                    <div className="flex items-center gap-2">
                       <Link
                         href={`/admin/teachers/${teacher.id}`}
                         data-testid={`btn-view-${teacher.id}`}
