@@ -8,7 +8,7 @@ export default auth((req) => {
   if (pathname.startsWith('/admin') && role !== 'ADMIN') {
     return NextResponse.redirect(new URL('/login', req.url))
   }
-  if (pathname.startsWith('/teacher') && role !== 'TEACHER') {
+  if (pathname.startsWith('/teacher') && role !== 'TEACHER' && role !== 'ADMIN') {
     return NextResponse.redirect(new URL('/login', req.url))
   }
   if (pathname === '/login' && role) {
