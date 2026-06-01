@@ -95,7 +95,6 @@ export async function PATCH(
 ) {
   const { session, error } = await requireAdmin()
   if (error) return error
-  void session
 
   let body: unknown
   try {
@@ -108,6 +107,11 @@ export async function PATCH(
 
   if (action !== 'deactivate' && action !== 'activate') {
     return NextResponse.json({ error: 'Unknown action. Supported: deactivate, activate' }, { status: 400 })
+  }
+
+  // Không cho phép vô hiệu hóa chính tài khoản đang đăng nhập
+  if (action === 'deactivate' && session?.user?.id === params.id) {
+    return NextResponse.json({ error: 'Không thể vô hiệu hóa tài khoản của chính mình' }, { status: 400 })
   }
 
   const user = await db.user.findUnique({ where: { id: params.id } })

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
+import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { CreateTeacherDialog } from '@/components/admin/CreateTeacherDialog'
 import { BulkImportDialog } from '@/components/admin/BulkImportDialog'
@@ -18,6 +19,8 @@ interface Teacher {
 }
 
 export default function TeachersPage() {
+  const { data: session } = useSession()
+  const currentUserId = session?.user?.id
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -315,6 +318,7 @@ export default function TeachersPage() {
                         Reset MK
                       </button>
                       {teacher.isActive ? (
+                        teacher.id !== currentUserId && (
                         <button
                           onClick={() =>
                             handleDeactivate(
@@ -327,6 +331,7 @@ export default function TeachersPage() {
                         >
                           Vô hiệu hóa
                         </button>
+                        )
                       ) : (
                         <>
                           <button
